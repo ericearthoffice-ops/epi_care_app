@@ -70,28 +70,28 @@ class MealCategorySelectionScreen extends StatelessWidget {
                   context: context,
                   category: CommunityCategory.korean,
                   label: '한식',
-                  icon: Icons.restaurant,
+                  imagePath: 'assets/images/Korean.png',
                   color: const Color(0xFFE53935),
                 ),
                 _buildCategoryCard(
                   context: context,
                   category: CommunityCategory.chinese,
                   label: '중식',
-                  icon: Icons.restaurant_menu,
+                  imagePath: 'assets/images/Chinese.png',
                   color: const Color(0xFFFB8C00),
                 ),
                 _buildCategoryCard(
                   context: context,
                   category: CommunityCategory.western,
                   label: '양식',
-                  icon: Icons.lunch_dining,
+                  imagePath: 'assets/images/Western.png',
                   color: const Color(0xFF43A047),
                 ),
                 _buildCategoryCard(
                   context: context,
                   category: CommunityCategory.japanese,
                   label: '일식',
-                  icon: Icons.ramen_dining,
+                  imagePath: 'assets/images/Japanese.png',
                   color: const Color(0xFF1E88E5),
                 ),
               ],
@@ -109,7 +109,7 @@ class MealCategorySelectionScreen extends StatelessWidget {
     required BuildContext context,
     required CommunityCategory category,
     required String label,
-    required IconData icon,
+    required String imagePath,
     required Color color,
   }) {
     return InkWell(
@@ -144,7 +144,7 @@ class MealCategorySelectionScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 아이콘
+            // 이미지
             Container(
               width: 80,
               height: 80,
@@ -152,10 +152,14 @@ class MealCategorySelectionScreen extends StatelessWidget {
                 color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 40,
-                color: color,
+              child: ClipOval(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
 

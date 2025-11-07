@@ -59,7 +59,7 @@ class MealTimeSelectionScreen extends StatelessWidget {
               context: context,
               mealTime: MealTime.breakfast,
               label: '아침',
-              icon: Icons.wb_sunny_outlined,
+              imagePath: 'assets/images/Morning.png',
               color: const Color(0xFFFFB74D), // 주황색
             ),
 
@@ -69,7 +69,7 @@ class MealTimeSelectionScreen extends StatelessWidget {
               context: context,
               mealTime: MealTime.lunch,
               label: '점심',
-              icon: Icons.wb_sunny,
+              imagePath: 'assets/images/Afternoon.png',
               color: const Color(0xFFFDD835), // 노란색
             ),
 
@@ -79,7 +79,7 @@ class MealTimeSelectionScreen extends StatelessWidget {
               context: context,
               mealTime: MealTime.dinner,
               label: '저녁',
-              icon: Icons.nightlight_round,
+              imagePath: 'assets/images/Evening.png',
               color: const Color(0xFF5C6BC0), // 보라색
             ),
 
@@ -95,7 +95,7 @@ class MealTimeSelectionScreen extends StatelessWidget {
     required BuildContext context,
     required MealTime mealTime,
     required String label,
-    required IconData icon,
+    required String imagePath,
     required Color color,
   }) {
     return InkWell(
@@ -129,7 +129,7 @@ class MealTimeSelectionScreen extends StatelessWidget {
           children: [
             const SizedBox(width: 40),
 
-            // 아이콘
+            // 이미지
             Container(
               width: 80,
               height: 80,
@@ -137,10 +137,14 @@ class MealTimeSelectionScreen extends StatelessWidget {
                 color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 45,
-                color: color,
+              child: ClipOval(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
 

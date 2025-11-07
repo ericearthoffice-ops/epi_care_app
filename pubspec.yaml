@@ -58,6 +58,9 @@ dependencies:
   # 날짜 포맷팅
   intl: ^0.20.1
 
+  # HTTP 통신 (백엔드 API 통신용)
+  http: ^1.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

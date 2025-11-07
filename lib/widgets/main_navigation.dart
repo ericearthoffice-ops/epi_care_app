@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'diet_calendar_screen.dart';
-import 'seizure_record_screen.dart';
-import 'profile_screen.dart';
 
-/// 메인 네비게이션 화면
-/// 하단 네비게이션 바를 포함하여 4개의 메인 화면을 관리
+import 'diet_calendar_screen.dart';
+import 'home_screen.dart';
+import 'profile_screen.dart';
+import 'seizure_record_screen.dart';
+
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
@@ -16,27 +15,23 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  // 네비게이션 화면 목록
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const DietCalendarScreen(),
-    const SeizureRecordScreen(),
-    const ProfileScreen(),
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    DietCalendarScreen(),
+    SeizureRecordScreen(),
+    ProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -47,28 +42,35 @@ class _MainNavigationState extends State<MainNavigation> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  icon: Icons.home,
-                  label: '홈',
-                  index: 0,
-                ),
-                _buildNavItem(
-                  icon: Icons.calendar_today,
-                  label: '식이/복용',
-                  index: 1,
-                ),
-                _buildNavItem(
-                  icon: Icons.list_alt,
-                  label: '발작 기록',
-                  index: 2,
-                ),
-                _buildNavItem(
-                  icon: Icons.person,
-                  label: '개인정보',
-                  index: 3,
-                ),
-              ],
+              children:
+                  [
+                        _NavItemData(
+                          assetPath: 'assets/images/Home icon.png',
+                          label: '홈',
+                        ),
+                        _NavItemData(
+                          assetPath: 'assets/images/Calender icon.png',
+                          label: '식이/복용',
+                        ),
+                        _NavItemData(
+                          assetPath: 'assets/images/Record icon.png',
+                          label: '발작 기록',
+                        ),
+                        _NavItemData(
+                          assetPath: 'assets/images/User icon.png',
+                          label: '개인정보',
+                        ),
+                      ]
+                      .asMap()
+                      .entries
+                      .map(
+                        (entry) => _buildNavItem(
+                          assetPath: entry.value.assetPath,
+                          label: entry.value.label,
+                          index: entry.key,
+                        ),
+                      )
+                      .toList(),
             ),
           ),
         ),
@@ -76,13 +78,13 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  /// 네비게이션 아이템 빌더
   Widget _buildNavItem({
-    required IconData icon,
+    required String assetPath,
     required String label,
     required int index,
   }) {
-    final isSelected = _currentIndex == index;
+    final bool isSelected = _currentIndex == index;
+    const double iconSize = 24;
 
     return GestureDetector(
       onTap: () {
@@ -96,10 +98,9 @@ class _MainNavigationState extends State<MainNavigation> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isSelected ? const Color(0xFF5B7FFF) : Colors.grey,
+            Opacity(
+              opacity: isSelected ? 1 : 0.5,
+              child: Image.asset(assetPath, width: iconSize, height: iconSize),
             ),
             const SizedBox(height: 4),
             Text(
@@ -115,4 +116,11 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
     );
   }
+}
+
+class _NavItemData {
+  final String assetPath;
+  final String label;
+
+  const _NavItemData({required this.assetPath, required this.label});
 }

@@ -24,7 +24,7 @@ android {
         applicationId = "com.example.epi_care_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26  // Samsung Health Sensor SDK requires API 26+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -41,4 +41,13 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Samsung Health Sensor SDK
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+
+    // Required dependencies for Samsung Health Sensor SDK
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.gms:play-services-wearable:18.1.0")
 }

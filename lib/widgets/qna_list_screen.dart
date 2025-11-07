@@ -177,7 +177,14 @@ class _QnaListScreenState extends State<QnaListScreen> {
         actions: [
           // 질문 등록하기 버튼
           IconButton(
-            icon: const Icon(Icons.edit_note),
+            icon: SizedBox(
+              width: 24,
+              height: 24,
+              child: Image.asset(
+                'assets/images/Column.png',
+                fit: BoxFit.contain,
+              ),
+            ),
             tooltip: '질문 등록하기',
             onPressed: () {
               Navigator.of(context).push(

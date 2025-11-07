@@ -13,27 +13,12 @@ class LoadingScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 고양이 캐릭터 이미지
-            // TODO: assets/images/loading_cat.png 파일이 추가되면 주석 해제
-            // Image.asset(
-            //   'assets/images/loading_cat.png',
-            //   width: 200,
-            //   height: 200,
-            // ),
-
-            // 임시 placeholder (이미지 추가 전까지 사용)
-            Container(
+            // 로딩 화면 이미지
+            Image.asset(
+              'assets/images/Loading_screen.png',
               width: 200,
               height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.pets,
-                size: 100,
-                color: Colors.grey[400],
-              ),
+              fit: BoxFit.contain,
             ),
 
             const SizedBox(height: 24),

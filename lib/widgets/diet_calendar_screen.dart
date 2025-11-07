@@ -438,10 +438,11 @@ class _DietCalendarScreenState extends State<DietCalendarScreen> {
               color: const Color(0xFF5B7FFF).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.restaurant,
-              size: 50,
-              color: Color(0xFF5B7FFF),
+            child: Image.asset(
+              'assets/images/Fork and spoon.png',
+              width: 50,
+              height: 50,
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(height: 24),

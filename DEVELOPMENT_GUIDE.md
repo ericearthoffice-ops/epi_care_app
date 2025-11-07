@@ -1,196 +1,114 @@
-# Epi Care App 개발 가이드
+# Epi Care App Development Guide
 
-## 프로젝트 구조
+This guide summarizes the current seizure-monitoring prototype, the Samsung Health integration path, and outstanding tasks for production readiness.
+
+---
+
+## 1. Project Snapshot
 
 ```
 epi_care_app/
+├── android/…                                 # Android host + Wear OS native bridge
+├── docs/
+│   └── backend_payload.md                    # REST contract for health data batches
 ├── lib/
-│   ├── main.dart                    # 메인 앱 (현재 테스트용)
-│   ├── widgets/
-│   │   └── loading_screen.dart      # 로딩 화면 위젯
-│   └── utils/
-│       └── loading_utils.dart       # 로딩 유틸리티
-├── assets/
-│   ├── images/                      # 이미지 파일들
-│   └── fonts/                       # 폰트 파일들
-└── pubspec.yaml                     # 프로젝트 설정 파일
+│   ├── main.dart                             # Flutter entry point & navigation
+│   ├── models/
+│   │   ├── health_sensor_data.dart           # Canonical Samsung sensor reading model
+│   │   └── seizure_prediction_data.dart      # Prediction summary used by alerts
+│   ├── services/
+│   │   ├── galaxy_watch_service.dart         # Method/Event channel bridge to Wear OS
+│   │   └── seizure_prediction_service.dart   # Buffer + POST health data to backend
+│   ├── utils/                                # Helpers (loading utilities, etc.)
+│   └── widgets/
+│       ├── health_monitor_screen.dart        # Live monitoring UI + control buttons
+│       └── seizure_alert_screen.dart         # Seizure alert and feedback dialog
+└── pubspec.yaml
 ```
+
+`HealthMonitorScreen` is not the landing page; navigate to it through the app’s router to access monitoring controls.
 
 ---
 
-## 구현된 기능
+## 2. Core Flutter Components
 
-### 1. 로딩 화면 (`loading_screen.dart`)
+### 2.1 `HealthSensorData`
+- Normalizes Samsung Health payloads for every tracker we plan to use (`heart_rate`, `spo2`, `bia`, `mf_bia`, `bio_active_sensor`, `ecg`, `eda`, `ibi`, `ppg`, `skin_temperature`, `sleep_stage`, etc.).
+- Stores multi-metric readings (`metrics`, `units`) plus raw payloads for debugging.
+- Provides helper getters for status text, and nominal range checks for heart rate and SpO₂.
 
-백엔드 응답이 지연될 때 자동으로 표시되는 로딩 화면입니다.
+### 2.2 `GalaxyWatchService`
+- Exposes `initialize`, `startTracking`, `stopTracking`, `measureOnce`, `isConnected` over a MethodChannel.
+- Streams sensor events via an EventChannel, converting native maps into `HealthSensorData`.
+- Publishes a default tracker list so the UI requests the full Samsung Health data set.
+- **Requires** a Wear OS counterpart (`SamsungHealthSensorManager.kt`) that talks to the Samsung Health Sensor SDK.
 
-**특징:**
-- 고양이 캐릭터 이미지 표시 (이미지 추가 시)
-- "로딩중..." 텍스트
-- 애니메이션 로딩 인디케이터
+### 2.3 `SeizurePredictionService`
+- Buffers incoming readings and sends batches every 10 seconds (`metadata` + `data` payload).
+- `flushBufferedData()` lets the UI force an immediate POST when monitoring stops.
+- Stubbed `_baseUrl` and endpoints must be replaced once the backend is available.
 
-**이미지 추가 방법:**
-1. PNG 파일을 `assets/images/loading_cat.png` 경로에 저장
-2. [loading_screen.dart](lib/widgets/loading_screen.dart:17) 파일에서 주석 해제:
-   ```dart
-   // 이 부분 주석 해제
-   Image.asset(
-     'assets/images/loading_cat.png',
-     width: 200,
-     height: 200,
-   ),
-
-   // 그리고 아래 Container 코드 삭제
-   Container(...)
-   ```
+### 2.4 `HealthMonitorScreen`
+- Shows connection status and the “갤럭시워치 연결” button until the watch is paired.
+- Offers `모니터링 시작 / 중지` toggles with feedback snack bars.
+- Displays heart-rate and SpO₂ cards, plus an “추가 센서 데이터” section for all other trackers.
+- Pipes every reading into `SeizurePredictionService` for backend delivery.
 
 ---
 
-### 2. 로딩 유틸리티 (`loading_utils.dart`)
+## 3. Samsung Health Integration Checklist
 
-백엔드 요청 시 자동으로 로딩 화면을 관리하는 유틸리티입니다.
+1. **Wear OS native layer**
+   - Import `samsung-health-sensor-sdk-v1.4.1` (AAR) into the Wear OS module.
+   - Implement `SamsungHealthSensorManager.kt` to handle MethodChannel calls and forward sensor events through the EventChannel.
+   - Register all required tracker types (BIA, MF-BIA, BioActive Sensor, ECG, EDA, IBI, PPG, skin temperature, sleep stage, …).
+   - Manage runtime permissions, Samsung partner authentication, and foreground service requirements for continuous sampling.
 
-#### 2-1. `LoadingUtils.runWithLoading()` 사용법
-
-**자동 로딩 표시:**
-```dart
-// 500ms 이상 걸리면 자동으로 로딩 화면 표시
-final result = await LoadingUtils.runWithLoading(
-  context,
-  () => fetchDataFromBackend(),
-);
-```
-
-**커스텀 임계값 설정:**
-```dart
-// 1000ms 이상 걸리면 로딩 화면 표시
-final result = await LoadingUtils.runWithLoading(
-  context,
-  () => fetchDataFromBackend(),
-  threshold: 1000,  // 1초
-);
-```
-
-#### 2-2. `LoadingFutureBuilder` 사용법
-
-**FutureBuilder 대신 사용:**
-```dart
-LoadingFutureBuilder<String>(
-  future: () => fetchDataFromBackend(),
-  builder: (context, data) {
-    return Text(data);
-  },
-  errorBuilder: (context, error) {
-    return Text('오류: $error');
-  },
-)
-```
+2. **Device validation**
+   - Install the Wear OS module on a Galaxy Watch running Wear OS Powered by Samsung.
+   - Run the Flutter app on an Android device, open `HealthMonitorScreen`, and confirm real-time updates for each tracker.
 
 ---
 
-## 실행 방법
+## 4. Backend Contract & TODOs
 
-### 1. 의존성 설치
+- Sensor batches are POSTed to `$_baseUrl$_healthDataEndpoint` (see `SeizurePredictionService`).
+- The exact payload is documented in `docs/backend_payload.md`:
+  - `metadata` (batch size, tracker list, time window, sentAt).
+  - `data[]` with `type`, `timestamp`, `metrics`, optional `value/unit/heartRate`, and the raw payload snapshot.
+- Backend responsibilities:
+  1. Validate and persist incoming batches (schema-on-read recommended).
+  2. Trigger seizure prediction and respond with `{ "predictionProbability": <double>, "modelVersion": "...", ... }` when available.
+  3. Return 200/201 on success so the client clears its buffer; non-2xx responses are retried.
+  4. Add authentication/authorization (Bearer token, API key, etc.) and update the Flutter headers accordingly.
+
+---
+
+## 5. Running the App
+
 ```bash
 cd epi_care_app
 flutter pub get
+flutter run   # Use an Android device or emulator for monitoring features
 ```
 
-### 2. 앱 실행
-```bash
-flutter run
-```
-
-### 3. 테스트 버튼 설명
-- **빠른 요청 (300ms)**: 응답이 빠르므로 로딩 화면이 표시되지 않음
-- **느린 요청 (2000ms)**: 500ms 이상 걸려서 로딩 화면이 표시됨
-- **FutureBuilder 방식**: 새 화면으로 이동하여 LoadingFutureBuilder 테스트
+- The live monitoring UI depends on Android-specific services. It will not function on the web (`flutter run -d chrome`).
+- Navigate to `HealthMonitorScreen` inside the app to access the connection and tracking controls.
 
 ---
 
-## PNG 이미지 추가하는 방법
+## 6. Testing Checklist
 
-### 1. 이미지 파일 저장
-```
-epi_care_app/assets/images/your_image.png
-```
-
-### 2. 코드에서 사용
-```dart
-Image.asset(
-  'assets/images/your_image.png',
-  width: 200,
-  height: 200,
-)
-```
-
-### 주의사항
-- 이미지는 이미 `pubspec.yaml`에 등록되어 있습니다
-- `assets/images/` 폴더에 저장하면 자동으로 인식됩니다
-- PNG, JPG, GIF 등 모든 이미지 형식 사용 가능
+- Initialize the watch, start monitoring, confirm cards update, stop monitoring, and check that `flushBufferedData()` fires.
+- Trigger every tracker (BIA, ECG, EDA, IBI, PPG, skin temperature, sleep stage) and ensure values appear under “추가 센서 데이터”.
+- Inspect outgoing HTTP payloads with a mock server to verify metadata, timestamps, and units.
+- Return a response containing `predictionProbability` from the backend and confirm notifications + alert screen behavior.
+- Exercise failure paths: disconnected watch, backend 5xx, malformed payload; the buffer should retry and the UI should show an error.
 
 ---
 
-## 백엔드 연동 준비
+## 7. Next Steps
 
-현재는 Mock 데이터를 사용하고 있습니다.
-
-### Mock 함수 예시 ([main.dart](lib/main.dart:28))
-```dart
-Future<String> _fetchDataFromBackend({int delay = 2000}) async {
-  await Future.delayed(Duration(milliseconds: delay));
-  return '데이터 로드 완료!';
-}
-```
-
-### 백엔드 연동 시 수정 방법
-
-**나중에 Kotlin 백엔드 파일을 받으면:**
-
-1. HTTP 패키지 추가 (`pubspec.yaml`):
-   ```yaml
-   dependencies:
-     http: ^1.1.0
-   ```
-
-2. Mock 함수를 실제 API 호출로 교체:
-   ```dart
-   Future<String> _fetchDataFromBackend() async {
-     final response = await http.get(Uri.parse('YOUR_API_URL'));
-     return response.body;
-   }
-   ```
-
-3. 로딩 유틸리티는 그대로 사용 가능:
-   ```dart
-   final result = await LoadingUtils.runWithLoading(
-     context,
-     () => _fetchDataFromBackend(),  // 실제 API 호출
-   );
-   ```
-
----
-
-## 다음 단계
-
-1. **로딩 화면 이미지 추가**
-   - 고양이 캐릭터 PNG 파일을 `assets/images/loading_cat.png`에 저장
-   - [loading_screen.dart](lib/widgets/loading_screen.dart:17)에서 주석 해제
-
-2. **새로운 기능 추가**
-   - 기능별로 위젯을 `lib/widgets/` 폴더에 추가
-   - 공통 유틸리티는 `lib/utils/` 폴더에 추가
-
-3. **백엔드 연동**
-   - Kotlin 백엔드 파일을 받으면 연동
-   - 현재 Mock 함수를 실제 API 호출로 교체
-
----
-
-## 파일 경로 참고
-
-- **로딩 화면**: [lib/widgets/loading_screen.dart](lib/widgets/loading_screen.dart)
-- **로딩 유틸리티**: [lib/utils/loading_utils.dart](lib/utils/loading_utils.dart)
-- **메인 앱**: [lib/main.dart](lib/main.dart)
-- **이미지 폴더**: `assets/images/`
-- **프로젝트 설정**: [pubspec.yaml](pubspec.yaml)
+1. Finish the Wear OS native implementation and obtain Samsung Health Sensor SDK partner approval.
+2. Deploy the backend ingestion endpoint and plug the real URL/token into `SeizurePredictionService`.
+3. Automate end-to-end tests once the wearable, Flutter app, and backend are wired together.

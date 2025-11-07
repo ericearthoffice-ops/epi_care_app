@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/community_post.dart';
 import '../constants/app_colors.dart';
 import 'common/category_chip.dart';
@@ -14,11 +16,16 @@ class CommunityWriteScreen extends StatefulWidget {
 
 class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   final _formKey = GlobalKey<FormState>();
+  final ImagePicker _imagePicker = ImagePicker();
 
   // 기본 정보
   CommunityCategory? _selectedCategory;
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+
+  // 이미지 관리
+  final List<XFile> _selectedImages = [];
+  int _thumbnailIndex = 0; // 썸네일로 지정된 이미지 인덱스
 
   // 재료 목록
   final List<_Ingredient> _ingredients = [
@@ -100,6 +107,54 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     });
   }
 
+  /// 이미지 선택
+  Future<void> _pickImages() async {
+    if (_selectedImages.length >= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('최대 3장까지 첨부할 수 있습니다.')),
+      );
+      return;
+    }
+
+    final List<XFile> images = await _imagePicker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+
+    if (images.isEmpty) return;
+
+    setState(() {
+      // 최대 3장까지만 추가
+      final remainingSlots = 3 - _selectedImages.length;
+      _selectedImages.addAll(images.take(remainingSlots));
+    });
+  }
+
+  /// 이미지 삭제
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+
+      // 썸네일 인덱스 조정
+      if (_thumbnailIndex >= _selectedImages.length) {
+        _thumbnailIndex = _selectedImages.isEmpty ? 0 : _selectedImages.length - 1;
+      } else if (_thumbnailIndex > index) {
+        _thumbnailIndex--;
+      }
+    });
+  }
+
+  /// 썸네일 지정
+  void _setThumbnail(int index) {
+    setState(() {
+      _thumbnailIndex = index;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${index + 1}번째 사진을 썸네일로 지정했습니다.')),
+    );
+  }
+
   /// 게시하기
   void _submitPost() {
     if (!_formKey.currentState!.validate()) {
@@ -116,9 +171,23 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       return;
     }
 
-    // TODO: 백엔드 API 연동하여 게시글 저장
+    if (_selectedImages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('최소 1장의 사진을 첨부해주세요.')),
+      );
+      return;
+    }
+
+    // TODO: 백엔드 API 연동하여 게시글 및 이미지 저장
+    // _selectedImages: 모든 이미지 파일
+    // _thumbnailIndex: 썸네일 이미지 인덱스
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('레시피가 게시되었습니다!')),
+      SnackBar(
+        content: Text(
+          '레시피가 게시되었습니다!\n'
+          '(이미지 ${_selectedImages.length}장, 썸네일: ${_thumbnailIndex + 1}번째)',
+        ),
+      ),
     );
 
     // 화면 닫기
@@ -287,47 +356,191 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '이미지',
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '이미지',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '${_selectedImages.length}/3',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '최소 1장, 최대 3장까지 첨부 가능 (썸네일 지정 필수)',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            color: Colors.grey[600],
           ),
         ),
         const SizedBox(height: 12),
-        InkWell(
-          onTap: () {
-            // TODO: 이미지 선택 기능 구현
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이미지 선택 기능은 곧 추가될 예정입니다.')),
-            );
-          },
+
+        // 이미지 선택된 경우
+        if (_selectedImages.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: _selectedImages.length + (_selectedImages.length < 3 ? 1 : 0),
+            itemBuilder: (context, index) {
+              // 마지막 항목: 추가 버튼
+              if (index == _selectedImages.length) {
+                return _buildAddImageButton();
+              }
+
+              // 이미지 표시
+              return _buildImageTile(index);
+            },
+          )
+        else
+          // 이미지 없을 때: 추가 버튼만 표시
+          _buildAddImageButton(),
+      ],
+    );
+  }
+
+  /// 이미지 추가 버튼
+  Widget _buildAddImageButton() {
+    return InkWell(
+      onTap: _pickImages,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!, width: 2, style: BorderStyle.solid),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_photo_alternate, size: 32, color: Colors.grey[400]),
+              const SizedBox(height: 4),
+              Text(
+                '사진 추가',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 이미지 타일 (미리보기 + 썸네일 지정 + 삭제)
+  Widget _buildImageTile(int index) {
+    final isThumbnail = index == _thumbnailIndex;
+
+    return Stack(
+      children: [
+        // 이미지 미리보기
+        ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            height: 180,
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              border: Border.all(
+                color: isThumbnail ? AppColors.primary : Colors.grey[300]!,
+                width: isThumbnail ? 3 : 2,
+              ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!, width: 2, style: BorderStyle.solid),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey[400]),
-                  const SizedBox(height: 8),
-                  Text(
-                    '음식 사진 추가',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+            child: Image.file(
+              File(_selectedImages[index].path),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          ),
+        ),
+
+        // 썸네일 배지
+        if (isThumbnail)
+          Positioned(
+            top: 4,
+            left: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                '썸네일',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+        // 삭제 버튼
+        Positioned(
+          top: 4,
+          right: 4,
+          child: InkWell(
+            onTap: () => _removeImage(index),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close,
+                color: Colors.white,
+                size: 16,
               ),
             ),
           ),
         ),
+
+        // 썸네일 지정 버튼
+        if (!isThumbnail)
+          Positioned(
+            bottom: 4,
+            left: 4,
+            right: 4,
+            child: InkWell(
+              onTap: () => _setThumbnail(index),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  '썸네일 지정',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

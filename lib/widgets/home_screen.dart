@@ -58,7 +58,7 @@ class HomeScreen extends StatelessWidget {
                 content: const Text(
                   '알림이 표시되었습니다!\n\n'
                   '📱 화면 상단을 아래로 스와이프하여\n'
-                  '알림창을 열고 "Seizure시계" 알림을 클릭하세요.',
+                  '알림창을 열고 "Seizure 시져" 알림을 클릭하세요.',
                 ),
                 duration: const Duration(seconds: 5),
                 backgroundColor: AppColors.success,
@@ -101,7 +101,7 @@ class HomeScreen extends StatelessWidget {
         children: [
           SizedBox(height: 20),
           Text(
-            'Seizure시계',
+            'Seizure 시져',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -125,7 +125,7 @@ class HomeScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildIconButton(
-            icon: Icons.question_answer,
+            imagePath: 'assets/images/QA.png',
             label: 'Q&A',
             onPressed: () {
               Navigator.of(context).push(
@@ -136,7 +136,7 @@ class HomeScreen extends StatelessWidget {
             },
           ),
           _buildIconButton(
-            icon: Icons.campaign,
+            imagePath: 'assets/images/Community.png',
             label: '커뮤니티',
             onPressed: () {
               Navigator.of(context).push(
@@ -147,7 +147,7 @@ class HomeScreen extends StatelessWidget {
             },
           ),
           _buildIconButton(
-            icon: Icons.edit_note,
+            imagePath: 'assets/images/Column.png',
             label: '칼럼',
             onPressed: () {
               Navigator.of(context).push(
@@ -164,7 +164,7 @@ class HomeScreen extends StatelessWidget {
 
   /// 아이콘 버튼
   Widget _buildIconButton({
-    required IconData icon,
+    required String imagePath,
     required String label,
     required VoidCallback onPressed,
   }) {
@@ -181,10 +181,12 @@ class HomeScreen extends StatelessWidget {
               border: Border.all(color: AppColors.grey300),
               boxShadow: AppStyles.cardShadow,
             ),
-            child: Icon(
-              icon,
-              size: 35,
-              color: AppColors.primary,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -325,10 +327,12 @@ class _HeaderIcon extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Icon(
-        Icons.medical_services,
-        size: 60,
-        color: AppColors.primary,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Image.asset(
+          'assets/images/Neuron.png',
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

@@ -4,6 +4,33 @@
     <!-- 진동 권한 (알림 진동용) -->
     <uses-permission android:name="android.permission.VIBRATE"/>
 
+    <!-- Samsung Health Sensor SDK - 블루투스 권한 (Android 12+) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- 블루투스 권한 (Android 11 이하) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+    <!-- 위치 권한 (블루투스 스캔에 필요) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- 센서 권한 -->
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+
+    <!-- 인터넷 권한 (백엔드 통신용) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Wake Lock (백그라운드 센서 데이터 수신용) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Foreground Service (지속적인 센서 모니터링용) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+
     <application
         android:label="epi_care_app"
         android:name="${applicationName}"
