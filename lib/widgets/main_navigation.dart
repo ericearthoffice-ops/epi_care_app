@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'diet_calendar_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'seizure_record_screen.dart';
+import 'seizure_alert_screen.dart';
+import '../utils/backend_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -21,6 +24,69 @@ class _MainNavigationState extends State<MainNavigation> {
     SeizureRecordScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkNotificationLaunch();
+  }
+
+  /// 앱이 알림으로 실행되었는지 체크하고, 그렇다면 SeizureAlertScreen으로 이동
+  Future<void> _checkNotificationLaunch() async {
+    debugPrint('📱 Checking if app was launched from notification...');
+    final FlutterLocalNotificationsPlugin notifications =
+        FlutterLocalNotificationsPlugin();
+
+    final details = await notifications.getNotificationAppLaunchDetails();
+    debugPrint('📱 didNotificationLaunchApp: ${details?.didNotificationLaunchApp}');
+    debugPrint('📱 payload: ${details?.notificationResponse?.payload}');
+
+    if (details?.didNotificationLaunchApp ?? false) {
+      final payload = details?.notificationResponse?.payload;
+      debugPrint('🔔 App was launched from notification with payload: $payload');
+
+      if (payload == 'seizure_prediction' && mounted) {
+        debugPrint('🚀 Scheduling navigation to SeizureAlertScreen...');
+        // 앱이 알림으로 실행되었고, payload가 'seizure_prediction'이면
+        // SeizureAlertScreen으로 이동
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            debugPrint('✅ Navigating to SeizureAlertScreen');
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => FutureBuilder(
+                  future: BackendService.fetchSeizurePrediction(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      debugPrint('✅ Data loaded, showing SeizureAlertScreen');
+                      return SeizureAlertScreen(
+                        predictionData: snapshot.data!,
+                        onSeizureConfirmed: () async {
+                          await BackendService.confirmSeizureOccurred(
+                            timestamp: DateTime.now(),
+                            predictionRate: snapshot.data!.predictionRate,
+                          );
+                        },
+                      );
+                    } else {
+                      debugPrint('⏳ Loading prediction data...');
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                  },
+                ),
+              ),
+            );
+          } else {
+            debugPrint('❌ Widget is not mounted');
+          }
+        });
+      }
+    } else {
+      debugPrint('ℹ️ App was not launched from notification');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

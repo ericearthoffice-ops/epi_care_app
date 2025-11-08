@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/seizure_prediction_data.dart';
 import '../utils/backend_service.dart';
 
@@ -499,24 +500,6 @@ class SeizureAlertScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                // TODO: 도움 보관함으로 이동
-              },
-              child: const Text(
-                '도움 보관함',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF5B7FFF),
-                  decoration: TextDecoration.underline,
-                  decorationColor: Color(0xFF5B7FFF),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -705,45 +688,214 @@ class SeizureAlertScreen extends StatelessWidget {
             Text('도움 요청'),
           ],
         ),
-        content: const Text(
-          '보호자에게 긴급 알림을 보내시겠습니까?\n\n현재 위치와 발작 예측 정보가 함께 전송됩니다.',
-          style: TextStyle(fontSize: 14),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '긴급 연락처를 선택하세요',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 119 (응급전화)
+            _buildEmergencyContactCard(
+              context,
+              icon: Icons.local_hospital,
+              label: '119 (응급전화)',
+              phoneNumber: '119',
+              color: Colors.red,
+            ),
+
+            const SizedBox(height: 12),
+
+            // 보호자 연락처
+            _buildEmergencyContactCard(
+              context,
+              icon: Icons.person,
+              label: '보호자',
+              phoneNumber: '010-1234-5678', // TODO: 실제 보호자 번호 연동
+              color: const Color(0xFF5B7FFF),
+            ),
+
+            const SizedBox(height: 12),
+
+            // 주치의 연락처
+            _buildEmergencyContactCard(
+              context,
+              icon: Icons.medical_services,
+              label: '주치의',
+              phoneNumber: '02-1234-5678', // TODO: 실제 주치의 번호 연동
+              color: const Color(0xFF43A047),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: 백엔드로 긴급 도움 요청 전송
-              // - 현재 위치
-              // - 발작 예측 확률
-              // - 타임스탬프
-              // - 보호자에게 푸시 알림/SMS 발송
-              debugPrint('=== 긴급 도움 요청 전송 ===');
-              debugPrint('예측 확률: ${predictionData.predictionRate}%');
-              debugPrint('시간: ${DateTime.now()}');
-              debugPrint('보호자 알림 발송 완료');
-              debugPrint('======================');
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('보호자에게 긴급 알림을 보냈습니다'),
-                  backgroundColor: Colors.red,
-                  duration: Duration(seconds: 3),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('도움 요청'),
+            child: const Text('닫기'),
           ),
         ],
       ),
     );
+  }
+
+  /// 긴급 연락처 카드
+  Widget _buildEmergencyContactCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String phoneNumber,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      phoneNumber,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _makePhoneCall(context, phoneNumber, label),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: color,
+                      side: BorderSide(color: color),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    icon: const Icon(Icons.phone, size: 16),
+                    label: const Text(
+                      '전화하기',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _sendAlert(context, phoneNumber, label),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    icon: const Icon(Icons.notifications, size: 16),
+                    label: const Text(
+                      '알림 보내기',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 전화 걸기
+  Future<void> _makePhoneCall(BuildContext context, String phoneNumber, String label) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+        debugPrint('전화 걸기: $label ($phoneNumber)');
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('전화를 걸 수 없습니다: $phoneNumber'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('전화 걸기 오류: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('전화를 거는 중 오류가 발생했습니다'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 알림 보내기
+  Future<void> _sendAlert(BuildContext context, String phoneNumber, String label) async {
+    Navigator.pop(context); // 다이얼로그 닫기
+
+    // TODO: 백엔드로 긴급 도움 요청 전송
+    // - 현재 위치
+    // - 발작 예측 확률
+    // - 타임스탬프
+    // - 연락처로 푸시 알림/SMS 발송
+    debugPrint('=== 긴급 알림 전송 ===');
+    debugPrint('수신자: $label ($phoneNumber)');
+    debugPrint('예측 확률: ${predictionData.predictionRate}%');
+    debugPrint('시간: ${DateTime.now()}');
+    debugPrint('===================');
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label에게 긴급 알림을 보냈습니다'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }

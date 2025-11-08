@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'widgets/main_navigation.dart';
@@ -15,33 +16,45 @@ void main() async {
   // 발작 예측 알림 서비스 초기화
   await NotificationService.initialize(
     onNotificationTapped: (payload) {
+      debugPrint('🔔 Notification tapped with payload: $payload');
       if (payload == 'seizure_prediction') {
+        debugPrint('🚀 Navigating to SeizureAlertScreen...');
         // 알림 클릭 시 발작 예측 화면으로 이동
         // GlobalKey를 통해 네비게이션 처리
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (context) => FutureBuilder(
-              future: BackendService.fetchSeizurePrediction(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return SeizureAlertScreen(
-                    predictionData: snapshot.data!,
-                    onSeizureConfirmed: () async {
-                      await BackendService.confirmSeizureOccurred(
-                        timestamp: DateTime.now(),
-                        predictionRate: snapshot.data!.predictionRate,
-                      );
-                    },
-                  );
-                } else {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
-                }
-              },
+        final navigator = navigatorKey.currentState;
+        if (navigator != null) {
+          debugPrint('✅ Navigator is available');
+          navigator.push(
+            MaterialPageRoute(
+              builder: (context) => FutureBuilder(
+                future: BackendService.fetchSeizurePrediction(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    debugPrint('✅ Data loaded, showing SeizureAlertScreen');
+                    return SeizureAlertScreen(
+                      predictionData: snapshot.data!,
+                      onSeizureConfirmed: () async {
+                        await BackendService.confirmSeizureOccurred(
+                          timestamp: DateTime.now(),
+                          predictionRate: snapshot.data!.predictionRate,
+                        );
+                      },
+                    );
+                  } else {
+                    debugPrint('⏳ Loading prediction data...');
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                },
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          debugPrint('❌ Navigator is null!');
+        }
+      } else {
+        debugPrint('ℹ️ Payload is not seizure_prediction: $payload');
       }
     },
   );

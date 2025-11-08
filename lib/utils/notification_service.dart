@@ -37,15 +37,26 @@ class NotificationService {
     await _notifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // 알림 클릭 시 호출
+        // 알림 클릭 시 호출 (foreground + background 앱이 실행 중일 때)
+        debugPrint('onDidReceiveNotificationResponse: ${response.payload}');
         onNotificationTapped(response.payload);
       },
+      onDidReceiveBackgroundNotificationResponse: _backgroundNotificationHandler,
     );
 
     // Android 권한 요청
     await _requestPermissions();
 
     debugPrint('NotificationService 초기화 완료');
+  }
+
+  /// Background 알림 핸들러 (Top-level function이어야 함)
+  @pragma('vm:entry-point')
+  static void _backgroundNotificationHandler(NotificationResponse response) {
+    // Background에서 알림 클릭 시 호출
+    debugPrint('Background notification tapped: ${response.payload}');
+    // 이 핸들러는 isolate에서 실행되므로 직접 navigation을 할 수 없음
+    // 대신 MainNavigation의 initState에서 getNotificationAppLaunchDetails로 체크
   }
 
   /// 권한 요청 (Android 13+)
@@ -64,19 +75,12 @@ class NotificationService {
   /// [predictionRate] - 예측 확률 (0-100)
   /// [isOngoing] - true로 설정하면 사용자가 직접 닫을 수 없는 ongoing notification
   ///
-  /// TODO: 실제 운영 시에는 threshold 체크를 활성화해야 함
-  /// 현재는 테스트를 위해 threshold 없이 항상 표시
+  /// Threshold(70%) 이상일 때만 알림 표시
+  /// SeizurePredictionService에서 threshold 아래로 내려가면 자동으로 알림 제거
   static Future<void> showSeizurePredictionNotification({
     required double predictionRate,
     bool isOngoing = true, // ongoing으로 설정하면 알림창에 계속 떠있음
   }) async {
-    // TODO: 실제 운영 시 주석 해제
-    // const double threshold = 70.0;
-    // if (predictionRate < threshold) {
-    //   debugPrint('예측 확률이 threshold($threshold%) 미만이므로 알림 표시 안함');
-    //   return;
-    //}
-
     debugPrint('발작 예측 알림 표시: ${predictionRate.toInt()}%');
 
     // Android 알림 상세 설정

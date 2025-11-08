@@ -61,6 +61,12 @@ dependencies:
   # HTTP 통신 (백엔드 API 통신용)
   http: ^1.2.0
 
+  # URL 런처 (전화 걸기 등)
+  url_launcher: ^6.3.1
+
+  # Health Connect (건강 데이터 - 갤럭시 워치 연동)
+  health: ^13.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

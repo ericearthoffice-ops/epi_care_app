@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'medical_report_period_screen.dart';
+import 'seizure_alert_screen.dart';
+import 'smartwatch_monitor_screen.dart';
+import '../utils/backend_service.dart';
 
 /// 개인정보 화면 (Placeholder)
 class ProfileScreen extends StatelessWidget {
@@ -72,6 +75,54 @@ class ProfileScreen extends StatelessWidget {
 
           // 건강 관리
           _buildSection('건강 관리', [
+            _buildMenuItem(
+              icon: Icons.warning_amber_rounded,
+              title: '발작 예측 확인',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => FutureBuilder(
+                      future: BackendService.fetchSeizurePrediction(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return SeizureAlertScreen(
+                            predictionData: snapshot.data!,
+                            onSeizureConfirmed: () async {
+                              await BackendService.confirmSeizureOccurred(
+                                timestamp: DateTime.now(),
+                                predictionRate: snapshot.data!.predictionRate,
+                              );
+                            },
+                          );
+                        } else if (snapshot.hasError) {
+                          return Scaffold(
+                            appBar: AppBar(title: const Text('오류')),
+                            body: Center(
+                              child: Text('데이터 로드 실패: ${snapshot.error}'),
+                            ),
+                          );
+                        } else {
+                          return const Scaffold(
+                            body: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+            _buildMenuItem(
+              icon: Icons.watch,
+              title: '스마트워치 모니터링',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SmartwatchMonitorScreen(),
+                  ),
+                );
+              },
+            ),
             _buildMenuItem(
               icon: Icons.medical_information,
               title: '의료 보고서 생성',

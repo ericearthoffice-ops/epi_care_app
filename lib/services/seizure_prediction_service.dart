@@ -148,7 +148,16 @@ class SeizurePredictionService {
     // Threshold를 넘으면 알림 표시
     if (predictionProbability >= _seizurePredictionThreshold) {
       _showSeizureWarning(predictionProbability);
+    } else {
+      // Threshold 아래로 내려가면 알림 제거
+      _clearSeizureWarning();
     }
+  }
+
+  /// 발작 경고 알림 제거 (threshold 아래로 내려갔을 때)
+  Future<void> _clearSeizureWarning() async {
+    debugPrint('✅ 발작 예측 확률이 threshold 아래로 내려감 - 알림 제거');
+    await NotificationService.cancelSeizurePredictionNotification();
   }
 
   /// 발작 경고 알림 표시
