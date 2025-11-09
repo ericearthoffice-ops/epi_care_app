@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
@@ -6,34 +7,53 @@ import '../models/medical_report.dart';
 
 /// PDF 생성 서비스
 class PdfGeneratorService {
+  /// 한글 폰트 (캐싱용)
+  static pw.Font? _koreanFont;
+
+  /// 한글 폰트 로드
+  Future<pw.Font> _loadKoreanFont() async {
+    if (_koreanFont != null) return _koreanFont!;
+
+    final fontData = await rootBundle.load('assets/fonts/NotoSansKR-Regular.ttf');
+    _koreanFont = pw.Font.ttf(fontData);
+    return _koreanFont!;
+  }
+
   /// 의료 보고서 PDF 생성
   Future<Uint8List> generateMedicalReportPdf(MedicalReport report) async {
+    // 한글 폰트 로드
+    final koreanFont = await _loadKoreanFont();
+
     final pdf = pw.Document();
 
     // 첫 페이지: 표지 및 기본 정보
-    pdf.addPage(_buildCoverPage(report));
+    pdf.addPage(_buildCoverPage(report, koreanFont));
 
     // 두 번째 페이지: 발작 통계
-    pdf.addPage(_buildSeizureStatisticsPage(report));
+    pdf.addPage(_buildSeizureStatisticsPage(report, koreanFont));
 
     // 세 번째 페이지: 약 복용 순응도
-    pdf.addPage(_buildMedicationAdherencePage(report));
+    pdf.addPage(_buildMedicationAdherencePage(report, koreanFont));
 
     // 네 번째 페이지: 식이 요약
-    pdf.addPage(_buildDietSummaryPage(report));
+    pdf.addPage(_buildDietSummaryPage(report, koreanFont));
 
     // 다섯 번째 페이지: 종합 요약 및 권장사항
-    pdf.addPage(_buildSummaryPage(report));
+    pdf.addPage(_buildSummaryPage(report, koreanFont));
 
     return pdf.save();
   }
 
   /// 표지 페이지
-  pw.Page _buildCoverPage(MedicalReport report) {
+  pw.Page _buildCoverPage(MedicalReport report, pw.Font font) {
     final dateFormat = DateFormat('yyyy년 MM월 dd일');
 
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: font,
+      ),
       build: (context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -75,11 +95,15 @@ class PdfGeneratorService {
   }
 
   /// 발작 통계 페이지
-  pw.Page _buildSeizureStatisticsPage(MedicalReport report) {
+  pw.Page _buildSeizureStatisticsPage(MedicalReport report, pw.Font font) {
     final stats = report.seizureStats;
 
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: font,
+      ),
       build: (context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -190,11 +214,15 @@ class PdfGeneratorService {
   }
 
   /// 약 복용 순응도 페이지
-  pw.Page _buildMedicationAdherencePage(MedicalReport report) {
+  pw.Page _buildMedicationAdherencePage(MedicalReport report, pw.Font font) {
     final adherence = report.medicationAdherence;
 
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: font,
+      ),
       build: (context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -293,12 +321,16 @@ class PdfGeneratorService {
   }
 
   /// 식이 요약 페이지
-  pw.Page _buildDietSummaryPage(MedicalReport report) {
+  pw.Page _buildDietSummaryPage(MedicalReport report, pw.Font font) {
     final diet = report.dietSummary;
     final nutrition = diet.nutritionAverages;
 
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: font,
+      ),
       build: (context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -416,9 +448,13 @@ class PdfGeneratorService {
   }
 
   /// 종합 요약 페이지
-  pw.Page _buildSummaryPage(MedicalReport report) {
+  pw.Page _buildSummaryPage(MedicalReport report, pw.Font font) {
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: font,
+      ),
       build: (context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
