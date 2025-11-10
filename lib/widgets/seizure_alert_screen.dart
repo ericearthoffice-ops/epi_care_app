@@ -46,15 +46,15 @@ class SeizureAlertScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               icon: const Icon(Icons.emergency, size: 18),
               label: const Text(
                 '도움 요청',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -220,27 +220,13 @@ class SeizureAlertScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // TODO: 나중에 실제 만화 이미지로 교체
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
-                  ),
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildComicPanel('1', '주변을\n안전하게', Icons.remove_circle_outline),
-                      _buildComicPanel('2', '옆으로\n눕히기', Icons.airline_seat_recline_normal),
-                      _buildComicPanel('3', '억지로\n움직이지 말기', Icons.pan_tool_outlined),
-                      _buildComicPanel('4', '시간 체크\n5분→119', Icons.timer),
-                    ],
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/Emergency.png',
+                    fit: BoxFit.cover,
                   ),
                 ),
-
                 const SizedBox(height: 24),
 
                 // 상세 텍스트
@@ -258,35 +244,35 @@ class SeizureAlertScreen extends StatelessWidget {
                   '1',
                   '주변을 안전하게 만드세요',
                   '아이 주변의 위험한 물건(가구, 날카로운 물건 등)을 치우세요. '
-                  '아이가 다치지 않도록 부드러운 곳으로 옮기거나 주변을 정리합니다.',
+                      '아이가 다치지 않도록 부드러운 곳으로 옮기거나 주변을 정리합니다.',
                 ),
 
                 _buildGuideStep(
                   '2',
                   '옆으로 눕히세요',
                   '아이를 옆으로 눕혀주세요. 이는 침이나 구토물이 기도를 막지 않도록 '
-                  '하는 회복 자세입니다. 머리 아래 부드러운 것을 받쳐주세요.',
+                      '하는 회복 자세입니다. 머리 아래 부드러운 것을 받쳐주세요.',
                 ),
 
                 _buildGuideStep(
                   '3',
                   '억지로 움직이거나 잡지 마세요',
                   '발작 중에는 아이를 억지로 잡거나 움직임을 제한하지 마세요. '
-                  '자연스럽게 발작이 끝날 때까지 기다립니다.',
+                      '자연스럽게 발작이 끝날 때까지 기다립니다.',
                 ),
 
                 _buildGuideStep(
                   '4',
                   '입에 아무것도 넣지 마세요',
                   '혀를 깨물까봐 손가락이나 물건을 입에 넣는 것은 매우 위험합니다. '
-                  '오히려 질식이나 부상의 위험이 있습니다.',
+                      '오히려 질식이나 부상의 위험이 있습니다.',
                 ),
 
                 _buildGuideStep(
                   '5',
                   '발작 시간을 체크하세요',
                   '발작이 시작된 시간을 확인하세요. 5분 이상 발작이 지속되거나, '
-                  '발작이 연속적으로 일어나면 즉시 119에 신고하세요.',
+                      '발작이 연속적으로 일어나면 즉시 119에 신고하세요.',
                 ),
 
                 const SizedBox(height: 16),
@@ -301,11 +287,7 @@ class SeizureAlertScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.emergency,
-                        color: Colors.red,
-                        size: 28,
-                      ),
+                      Icon(Icons.emergency, color: Colors.red, size: 28),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -347,54 +329,6 @@ class SeizureAlertScreen extends StatelessWidget {
     );
   }
 
-  /// 만화 패널 (placeholder)
-  Widget _buildComicPanel(String number, String text, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: const Color(0xFF5B7FFF),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                number,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Icon(icon, size: 32, color: Colors.black54),
-          const SizedBox(height: 8),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black87,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 가이드 단계
   Widget _buildGuideStep(String number, String title, String description) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -596,9 +530,7 @@ class SeizureAlertScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
       ),
       child: Row(
         children: [
@@ -661,16 +593,11 @@ class SeizureAlertScreen extends StatelessWidget {
           backgroundColor: const Color(0xFF9E9E9E),
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(
           label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -797,7 +724,8 @@ class SeizureAlertScreen extends StatelessWidget {
                 child: SizedBox(
                   height: 36,
                   child: OutlinedButton.icon(
-                    onPressed: () => _makePhoneCall(context, phoneNumber, label),
+                    onPressed: () =>
+                        _makePhoneCall(context, phoneNumber, label),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: color,
                       side: BorderSide(color: color),
@@ -806,10 +734,7 @@ class SeizureAlertScreen extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.phone, size: 16),
-                    label: const Text(
-                      '전화하기',
-                      style: TextStyle(fontSize: 13),
-                    ),
+                    label: const Text('전화하기', style: TextStyle(fontSize: 13)),
                   ),
                 ),
               ),
@@ -828,10 +753,7 @@ class SeizureAlertScreen extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.notifications, size: 16),
-                    label: const Text(
-                      '알림 보내기',
-                      style: TextStyle(fontSize: 13),
-                    ),
+                    label: const Text('알림 보내기', style: TextStyle(fontSize: 13)),
                   ),
                 ),
               ),
@@ -843,7 +765,11 @@ class SeizureAlertScreen extends StatelessWidget {
   }
 
   /// 전화 걸기
-  Future<void> _makePhoneCall(BuildContext context, String phoneNumber, String label) async {
+  Future<void> _makePhoneCall(
+    BuildContext context,
+    String phoneNumber,
+    String label,
+  ) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
 
     try {
@@ -874,7 +800,11 @@ class SeizureAlertScreen extends StatelessWidget {
   }
 
   /// 알림 보내기
-  Future<void> _sendAlert(BuildContext context, String phoneNumber, String label) async {
+  Future<void> _sendAlert(
+    BuildContext context,
+    String phoneNumber,
+    String label,
+  ) async {
     Navigator.pop(context); // 다이얼로그 닫기
 
     // TODO: 백엔드로 긴급 도움 요청 전송

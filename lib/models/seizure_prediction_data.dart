@@ -33,6 +33,23 @@ class SeizurePredictionData {
       stressIndex: StressIndexData(value: 78, unit: '/100', changeRate: 28, isIncrease: true),
     );
   }
+
+  /// 백엔드 JSON 응답으로부터 생성
+  factory SeizurePredictionData.fromJson(Map<String, dynamic> json) {
+    // predictionRate는 prediction_rate일 수도 있음 (백엔드 스네이크 케이스)
+    final predictionRate = (json['predictionRate'] ?? json['prediction_rate'] ?? 0).toDouble();
+
+    return SeizurePredictionData(
+      predictionRate: predictionRate,
+      emg: EMGData.fromJson(json['emgData'] ?? {}),
+      ecg: ECGData.fromJson(json['ecgData'] ?? {}),
+      accelerometer: AccelerometerData.fromJson(json['accelerometerData'] ?? {}),
+      sleepTime: SleepTimeData.fromJson(json['sleepTimeData'] ?? {}),
+      ketoAdherence: KetoAdherenceData.fromJson(json['ketoAdherenceData'] ?? {}),
+      medicationAdherence: MedicationAdherenceData.fromJson(json['medicationAdherenceData'] ?? {}),
+      stressIndex: StressIndexData.fromJson(json['stressIndexData'] ?? {}),
+    );
+  }
 }
 
 /// 개별 데이터 항목 베이스 클래스
@@ -63,6 +80,17 @@ class EMGData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory EMGData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return EMGData(
+      value: value,
+      unit: 'mV',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }
 
 class ECGData extends MedicalDataItem {
@@ -72,6 +100,17 @@ class ECGData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory ECGData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return ECGData(
+      value: value,
+      unit: 'bpm',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }
 
 class AccelerometerData extends MedicalDataItem {
@@ -81,6 +120,17 @@ class AccelerometerData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory AccelerometerData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return AccelerometerData(
+      value: value,
+      unit: 'g',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }
 
 class SleepTimeData extends MedicalDataItem {
@@ -90,6 +140,17 @@ class SleepTimeData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory SleepTimeData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return SleepTimeData(
+      value: value,
+      unit: 'h',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }
 
 class KetoAdherenceData extends MedicalDataItem {
@@ -99,6 +160,17 @@ class KetoAdherenceData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory KetoAdherenceData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return KetoAdherenceData(
+      value: value,
+      unit: '%',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }
 
 class MedicationAdherenceData extends MedicalDataItem {
@@ -108,6 +180,17 @@ class MedicationAdherenceData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory MedicationAdherenceData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return MedicationAdherenceData(
+      value: value,
+      unit: '%',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }
 
 class StressIndexData extends MedicalDataItem {
@@ -117,4 +200,15 @@ class StressIndexData extends MedicalDataItem {
     required super.changeRate,
     required super.isIncrease,
   });
+
+  factory StressIndexData.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final change = json['change'];
+    return StressIndexData(
+      value: value,
+      unit: '/100',
+      changeRate: change?.abs(),
+      isIncrease: change != null ? change > 0 : null,
+    );
+  }
 }

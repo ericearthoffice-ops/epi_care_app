@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../services/health_data_service.dart';
+import '../services/galaxy_watch_service.dart';
 import '../services/seizure_prediction_service.dart';
+import '../models/health_sensor_data.dart';
 
-/// 스마트워치 데이터 모니터링 화면 (실제 Health Connect 데이터 사용)
+/// 스마트워치 데이터 모니터링 화면 (실제 Galaxy Watch 센서 데이터 사용)
 class SmartwatchMonitorScreen extends StatefulWidget {
   const SmartwatchMonitorScreen({super.key});
 
@@ -13,21 +14,23 @@ class SmartwatchMonitorScreen extends StatefulWidget {
 
 class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
   final List<String> _logs = [];
-  final HealthDataService _healthService = HealthDataService();
+  final GalaxyWatchService _galaxyWatchService = GalaxyWatchService();
   final SeizurePredictionService _predictionService = SeizurePredictionService();
-  Timer? _dataTimer;
+  StreamSubscription<HealthSensorData>? _dataSubscription;
   bool _isConnected = false;
-  bool _hasPermission = false;
+  bool _isTracking = false;
   bool _isLoading = true;
   DateTime? _lastDataReceived;
 
   // 최근 받은 데이터
   Map<String, dynamic> _latestData = {
     'heartRate': 0.0,
-    'steps': 0,
-    'sleepMinutes': 0,
-    'sleepQuality': 0.0,
-    'activeCalories': 0.0,
+    'spo2': 0.0,
+    'ecg': 0.0,
+    'ppg': 0.0,
+    'eda': 0.0,
+    'ibi': 0.0,
+    'skinTemperature': 0.0,
   };
 
   @override
@@ -39,127 +42,166 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
 
   @override
   void dispose() {
-    _dataTimer?.cancel();
+    _dataSubscription?.cancel();
+    _galaxyWatchService.stopTracking();
+    _galaxyWatchService.dispose();
     _predictionService.dispose();
     super.dispose();
   }
 
-  /// 초기화 및 권한 요청
+  /// 초기화 및 Galaxy Watch 연결
   Future<void> _initialize() async {
-    _addLog('Health Connect 확인 중...');
-
-    // Health Connect 사용 가능 여부 확인
-    final available = await _healthService.isHealthConnectAvailable();
-    if (!available) {
-      _addLog('❌ Health Connect를 사용할 수 없습니다');
-      _addLog('   Android 14 이상이거나 Health Connect 앱이 필요합니다');
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    _addLog('✅ Health Connect 사용 가능');
-
-    // 권한 요청
-    _addLog('권한 요청 중...');
-    final authorized = await _healthService.requestAuthorization();
-
-    setState(() {
-      _hasPermission = authorized;
-      _isConnected = authorized;
-      _isLoading = false;
-    });
-
-    if (authorized) {
-      _addLog('✅ 권한 승인됨');
-      _addLog('갤럭시 워치 데이터 연결 완료');
-      _startDataMonitoring();
-      // 즉시 첫 데이터 로드
-      _fetchHealthData();
-    } else {
-      _addLog('❌ 권한 거부됨');
-      _addLog('   설정에서 권한을 허용해주세요');
-    }
-  }
-
-  /// 데이터 수신 모니터링 시작
-  void _startDataMonitoring() {
-    // 30초마다 Health Connect에서 데이터 가져오기
-    _dataTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted && _isConnected) {
-        _fetchHealthData();
-      }
-    });
-  }
-
-  /// Health Connect에서 실제 데이터 가져오기
-  Future<void> _fetchHealthData() async {
-    final now = DateTime.now();
-    _addLog('📊 데이터 수신: ${_formatTime(now)}');
+    _addLog('Galaxy Watch 연결 확인 중...');
 
     try {
-      // Health Connect에서 데이터 가져오기
-      final data = await _healthService.getHealthDataForPrediction();
+      // Galaxy Watch 연결 여부 확인 (5초 timeout)
+      final connected = await _galaxyWatchService.isConnected()
+        .timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            _addLog('⏱️ 연결 확인 시간 초과');
+            return false;
+          },
+        );
 
-      setState(() {
-        _lastDataReceived = now;
-        _latestData = data;
-      });
-
-      _addLog('  ❤️ 심박수: ${data['heartRate']?.toStringAsFixed(1)} bpm');
-      _addLog('  👣 걸음 수: ${data['steps']}');
-      _addLog('  😴 수면: ${data['sleepMinutes']}분');
-      _addLog('  🔥 칼로리: ${data['activeCalories']?.toStringAsFixed(1)} kcal');
-
-      // 백엔드로 실제 전송
-      _sendToBackend(data);
-    } catch (e) {
-      _addLog('❌ 데이터 가져오기 오류: $e');
-    }
-  }
-
-  /// 백엔드로 실제 데이터 전송 (SeizurePredictionService 사용)
-  Future<void> _sendToBackend(Map<String, dynamic> data) async {
-    try {
-      _addLog('📤 백엔드 전송 시작...');
-
-      // Health Connect 데이터를 HealthSensorData 형식으로 변환
-      final sensorDataList = _healthService.convertToSensorData(data);
-
-      if (sensorDataList.isEmpty) {
-        _addLog('⚠️ 전송할 데이터가 없습니다');
-        _addLog('---');
+      if (!connected) {
+        _addLog('❌ Galaxy Watch가 연결되지 않았습니다');
+        _addLog('   Galaxy Watch를 페어링하고 앱을 다시 시작하세요');
+        setState(() {
+          _isConnected = false;
+          _isLoading = false;
+        });
         return;
       }
 
-      _addLog('   변환된 데이터: ${sensorDataList.length}개 센서');
+      _addLog('✅ Galaxy Watch 연결됨');
 
-      // SeizurePredictionService를 통해 백엔드로 전송
-      final result = await _predictionService.sendHealthDataToBackend(sensorDataList);
+      // Galaxy Watch SDK 초기화
+      _addLog('센서 초기화 중...');
+      final result = await _galaxyWatchService.initialize(
+        trackers: [
+          'heart_rate',
+          'spo2',
+          'ecg',
+          'ppg',
+          'eda',
+          'ibi',
+          'skin_temperature',
+        ],
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          _addLog('⏱️ 센서 초기화 시간 초과');
+          throw TimeoutException('Sensor initialization timeout');
+        },
+      );
 
-      if (result['status'] == 'skipped') {
-        _addLog('⚠️ 전송 건너뜀 (데이터 없음)');
-      } else {
-        _addLog('✅ 백엔드 전송 완료');
+      _addLog('✅ 센서 초기화 완료');
+      _addLog('   지원 센서: ${result['trackers']?.toString() ?? "알 수 없음"}');
 
-        // 발작 예측 결과가 있으면 표시
-        if (result['predictionProbability'] != null) {
-          final probability = result['predictionProbability'] as double;
-          _addLog('   📊 발작 예측 확률: ${probability.toStringAsFixed(1)}%');
+      // 스트리밍 시작
+      await _startTracking();
 
-          if (probability >= 70.0) {
-            _addLog('   ⚠️ 높은 발작 위험 감지!');
-          }
-        }
-      }
-
-      _addLog('---');
+      setState(() {
+        _isConnected = true;
+        _isLoading = false;
+      });
     } catch (e) {
-      _addLog('❌ 백엔드 전송 오류: $e');
-      _addLog('   (백엔드 서버가 설정되지 않았거나 연결할 수 없음)');
-      _addLog('---');
+      _addLog('❌ 초기화 실패: $e');
+      setState(() {
+        _isConnected = false;
+        _isLoading = false;
+      });
     }
+  }
+
+  /// 센서 데이터 추적 시작 (실시간 스트리밍)
+  Future<void> _startTracking() async {
+    _addLog('실시간 데이터 스트리밍 시작...');
+
+    try {
+      // Galaxy Watch에서 데이터 추적 시작
+      await _galaxyWatchService.startTracking(
+        trackers: [
+          'heart_rate',
+          'spo2',
+          'ecg',
+          'ppg',
+          'eda',
+          'ibi',
+          'skin_temperature',
+        ],
+        samplingInterval: const Duration(seconds: 5),
+      );
+
+      // 데이터 스트림 구독
+      _dataSubscription = _galaxyWatchService.healthDataStream.listen(
+        _handleSensorData,
+        onError: (error) {
+          _addLog('❌ 스트림 오류: $error');
+        },
+        onDone: () {
+          _addLog('⚠️ 스트림 종료됨');
+          setState(() {
+            _isTracking = false;
+          });
+        },
+      );
+
+      setState(() {
+        _isTracking = true;
+      });
+
+      _addLog('✅ 실시간 스트리밍 시작됨 (5초 간격)');
+    } catch (e) {
+      _addLog('❌ 추적 시작 실패: $e');
+    }
+  }
+
+  /// 센서 데이터 처리 (실시간 스트림에서 수신)
+  void _handleSensorData(HealthSensorData data) {
+    final now = DateTime.now();
+
+    setState(() {
+      _lastDataReceived = now;
+
+      // 센서 타입별 최신 데이터 업데이트
+      switch (data.type) {
+        case 'heart_rate':
+          _latestData['heartRate'] = data.value ?? 0.0;
+          _addLog('❤️ 심박수: ${data.value?.toStringAsFixed(1)} bpm');
+          break;
+        case 'spo2':
+          _latestData['spo2'] = data.value ?? 0.0;
+          _addLog('🫁 산소포화도: ${data.value?.toStringAsFixed(1)}%');
+          break;
+        case 'ecg':
+          _latestData['ecg'] = data.value ?? 0.0;
+          _addLog('📈 ECG: ${data.value?.toStringAsFixed(2)} mV');
+          break;
+        case 'ppg':
+          _latestData['ppg'] = data.value ?? 0.0;
+          _addLog('🩺 PPG: ${data.value?.toStringAsFixed(2)}');
+          break;
+        case 'eda':
+          _latestData['eda'] = data.value ?? 0.0;
+          _addLog('🧠 EDA: ${data.value?.toStringAsFixed(2)} μS');
+          break;
+        case 'ibi':
+          _latestData['ibi'] = data.value ?? 0.0;
+          _addLog('❤️‍🩹 IBI: ${data.value?.toStringAsFixed(0)} ms');
+          break;
+        case 'skin_temperature':
+          _latestData['skinTemperature'] = data.value ?? 0.0;
+          _addLog('🌡️ 피부온도: ${data.value?.toStringAsFixed(1)}°C');
+          break;
+        default:
+          _addLog('📊 ${data.type}: ${data.value}');
+      }
+    });
+
+    // 백엔드로 즉시 전송 (버퍼링은 SeizurePredictionService가 처리)
+    _predictionService.addHealthData(data);
   }
 
   /// 로그 추가
@@ -202,15 +244,16 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
                 _logs.clear();
               });
               _addLog('로그 초기화됨');
-              if (_hasPermission) {
-                await _fetchHealthData();
+              // 스트리밍 재시작
+              if (_isConnected && !_isTracking) {
+                await _startTracking();
               }
             },
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildLoadingScreen()
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -222,15 +265,15 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
 
                     const SizedBox(height: 16),
 
-                    // 권한 요청 버튼 (권한 없을 때만)
-                    if (!_hasPermission) _buildPermissionRequestCard(),
+                    // 연결 안됨 카드 (연결 안됐을 때만)
+                    if (!_isConnected) _buildConnectionRetryCard(),
 
-                    if (!_hasPermission) const SizedBox(height: 16),
+                    if (!_isConnected) const SizedBox(height: 16),
 
                     // 최근 데이터 카드
-                    if (_hasPermission) _buildLatestDataCard(),
+                    if (_isConnected) _buildLatestDataCard(),
 
-                    if (_hasPermission) const SizedBox(height: 16),
+                    if (_isConnected) const SizedBox(height: 16),
 
                     // 로그 카드
                     _buildLogCard(),
@@ -238,6 +281,113 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  /// 로딩 스크린
+  Widget _buildLoadingScreen() {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Galaxy Watch 아이콘
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.watch,
+                size: 60,
+                color: Color(0xFF5B7FFF),
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // 로딩 인디케이터
+            const SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5B7FFF)),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // 로딩 메시지
+            const Text(
+              'Galaxy Watch 연결 중...',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 부가 설명
+            Text(
+              '센서를 초기화하고 있습니다',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 60),
+
+            // 힌트 카드
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 20,
+                    color: Color(0xFF5B7FFF),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      '시간이 오래 걸리면 워치 페어링을\n확인해주세요',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black.withValues(alpha: 0.7),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -271,7 +421,7 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Health Connect 연결 상태',
+                    'Galaxy Watch 연결 상태',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -285,16 +435,18 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _isConnected ? Colors.green : Colors.red,
+                          color: _isConnected && _isTracking ? Colors.green : (_isConnected ? Colors.orange : Colors.red),
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _isConnected ? '연결됨 (갤럭시 워치)' : '연결 안됨',
+                        _isConnected
+                          ? (_isTracking ? '실시간 스트리밍 중' : '연결됨 (대기 중)')
+                          : '연결 안됨',
                         style: TextStyle(
                           fontSize: 14,
-                          color: _isConnected ? Colors.green : Colors.red,
+                          color: _isConnected && _isTracking ? Colors.green : (_isConnected ? Colors.orange : Colors.red),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -327,8 +479,8 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
     );
   }
 
-  /// 권한 요청 카드
-  Widget _buildPermissionRequestCard() {
+  /// 연결 재시도 카드
+  Widget _buildConnectionRetryCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -338,10 +490,10 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          const Icon(Icons.watch_off_outlined, color: Colors.orange, size: 48),
           const SizedBox(height: 12),
           const Text(
-            'Health Connect 권한 필요',
+            'Galaxy Watch 연결 필요',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -350,7 +502,7 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            '갤럭시 워치의 건강 데이터를 읽으려면\nHealth Connect 권한이 필요합니다.',
+            'Galaxy Watch를 페어링하고\n앱을 다시 시작하거나 다시 연결 버튼을 눌러주세요.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -360,14 +512,20 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () async {
+              setState(() {
+                _isLoading = true;
+              });
               await _initialize();
+              setState(() {
+                _isLoading = false;
+              });
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,
             ),
-            icon: const Icon(Icons.shield),
-            label: const Text('권한 요청하기'),
+            icon: const Icon(Icons.refresh),
+            label: const Text('다시 연결하기'),
           ),
         ],
       ),
@@ -394,10 +552,10 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics, color: Color(0xFF5B7FFF), size: 24),
+              const Icon(Icons.watch, color: Color(0xFF5B7FFF), size: 24),
               const SizedBox(width: 8),
               const Text(
-                '최근 수신 데이터 (Health Connect)',
+                '최근 수신 데이터 (Galaxy Watch)',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -409,13 +567,17 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
           const SizedBox(height: 16),
           _buildDataItem('심박수', '${_latestData['heartRate']?.toStringAsFixed(1) ?? '0.0'} bpm', Icons.favorite),
           const SizedBox(height: 12),
-          _buildDataItem('걸음 수', '${_latestData['steps'] ?? 0} 걸음', Icons.directions_walk),
+          _buildDataItem('산소포화도', '${_latestData['spo2']?.toStringAsFixed(1) ?? '0.0'}%', Icons.air),
           const SizedBox(height: 12),
-          _buildDataItem('수면 시간', '${_latestData['sleepMinutes'] ?? 0} 분', Icons.bedtime),
+          _buildDataItem('심전도 (ECG)', '${_latestData['ecg']?.toStringAsFixed(2) ?? '0.00'} mV', Icons.monitor_heart),
           const SizedBox(height: 12),
-          _buildDataItem('수면 품질', '${_latestData['sleepQuality']?.toStringAsFixed(1) ?? '0.0'}%', Icons.psychology),
+          _buildDataItem('광혈류측정 (PPG)', '${_latestData['ppg']?.toStringAsFixed(2) ?? '0.00'}', Icons.graphic_eq),
           const SizedBox(height: 12),
-          _buildDataItem('소모 칼로리', '${_latestData['activeCalories']?.toStringAsFixed(1) ?? '0.0'} kcal', Icons.local_fire_department),
+          _buildDataItem('피부전기활동 (EDA)', '${_latestData['eda']?.toStringAsFixed(2) ?? '0.00'} μS', Icons.electric_bolt),
+          const SizedBox(height: 12),
+          _buildDataItem('심박간격 (IBI)', '${_latestData['ibi']?.toStringAsFixed(0) ?? '0'} ms', Icons.timer),
+          const SizedBox(height: 12),
+          _buildDataItem('피부온도', '${_latestData['skinTemperature']?.toStringAsFixed(1) ?? '0.0'}°C', Icons.thermostat),
         ],
       ),
     );

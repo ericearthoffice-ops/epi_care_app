@@ -1,35 +1,38 @@
 import 'package:flutter/foundation.dart';
 import '../models/seizure_prediction_data.dart';
 import '../models/seizure_record.dart';
+import '../services/seizure_prediction_service.dart';
 
 /// 백엔드 서비스 클래스
-/// TODO: 실제 백엔드 API 연동 시 수정 필요
 class BackendService {
   /// 발작 예측 데이터 가져오기
   ///
-  /// TODO: 실제 백엔드 연동 시:
-  /// - Kotlin 백엔드 API 엔드포인트 연결
-  /// - HTTP 요청으로 변경
-  /// - 응답 데이터 파싱
+  /// 1. 캐시된 예측 데이터가 있으면 반환
+  /// 2. 없으면 백엔드에서 최신 예측 가져오기
+  /// 3. 백엔드 실패 시 mock 데이터 반환
   static Future<SeizurePredictionData> fetchSeizurePrediction() async {
-    // Mock: 백엔드 요청 시뮬레이션 (2초 지연)
-    await Future.delayed(const Duration(milliseconds: 2000));
-
-    // Mock 데이터 반환
-    return SeizurePredictionData.mock();
-
-    /* 실제 백엔드 연동 시 아래 코드 사용 예:
-
-    final response = await http.get(
-      Uri.parse('YOUR_BACKEND_API_URL/seizure-prediction'),
-    );
-
-    if (response.statusCode == 200) {
-      return SeizurePredictionData.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Failed to load seizure prediction data');
+    // 1. 캐시된 데이터 확인
+    final cachedPrediction = SeizurePredictionService.getLatestPrediction();
+    if (cachedPrediction != null) {
+      debugPrint('📦 캐시된 예측 데이터 사용');
+      return cachedPrediction;
     }
-    */
+
+    // 2. 백엔드에서 최신 예측 가져오기
+    debugPrint('🌐 백엔드에서 최신 예측 데이터 가져오는 중...');
+    try {
+      final prediction = await SeizurePredictionService.fetchLatestPredictionFromBackend();
+      if (prediction != null) {
+        debugPrint('✅ 백엔드에서 예측 데이터 로드 성공');
+        return prediction;
+      }
+    } catch (e) {
+      debugPrint('⚠️ 백엔드 요청 실패: $e');
+    }
+
+    // 3. 백엔드 실패 시 mock 데이터 반환
+    debugPrint('📝 Mock 데이터 사용 (백엔드 연결 실패)');
+    return SeizurePredictionData.mock();
   }
 
   /// 발작 발생 확인 전송
