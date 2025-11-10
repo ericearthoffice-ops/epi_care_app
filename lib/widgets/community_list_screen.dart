@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/community_post.dart';
 import '../models/nutrition_info.dart';
+import '../services/community_service.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_styles.dart';
 import '../utils/format_utils.dart';
@@ -8,6 +9,7 @@ import '../widgets/common/category_chip.dart';
 import 'community_detail_screen.dart';
 import 'community_write_screen.dart';
 import 'meal_time_selection_screen.dart';
+import 'loading_screen.dart';
 
 /// 정렬 방식 enum
 enum SortOrder {
@@ -66,21 +68,63 @@ class _CommunityListScreenState extends State<CommunityListScreen>
     super.dispose();
   }
 
-  /// 커뮤니티 게시글 로드 (Mock 데이터)
+  /// 커뮤니티 게시글 로드
   Future<void> _loadCommunityPosts() async {
     setState(() {
       _isLoading = true;
     });
 
-    // TODO: 백엔드 API 연동
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // 선택된 카테고리 결정 (전체는 null)
+      CommunityCategory? selectedCategory;
+      if (_tabController.index > 0) {
+        selectedCategory = CommunityCategory.values[_tabController.index - 1];
+      }
 
-    final mockPosts = _generateMockPosts();
+      // 백엔드 API 호출
+      final posts = await CommunityService.fetchPosts(
+        category: selectedCategory,
+        sort: _currentSortOrder.name,
+      );
 
-    setState(() {
-      _communityPosts = mockPosts;
-      _isLoading = false;
-    });
+      setState(() {
+        _communityPosts = posts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('커뮤니티 게시글 로드 실패: $e');
+
+      // 에러 발생 시 Mock 데이터로 대체 (개발 중 fallback)
+      if (mounted) {
+        setState(() {
+          _communityPosts = _generateMockPosts();
+          _isLoading = false;
+        });
+
+        // 사용자에게 에러 알림
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('서버 연결 실패. Mock 데이터를 표시합니다.\n($e)'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: '재시도',
+              textColor: Colors.white,
+              onPressed: () {
+                _loadCommunityPosts();
+              },
+            ),
+          ),
+        );
+      }
+    } finally {
+      // 로딩 상태를 확실히 false로 설정
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   /// Mock 데이터 생성
@@ -296,11 +340,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
           // 탭 뷰
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primary,
-                    ),
-                  )
+                ? const LoadingScreen()
                 : TabBarView(
                     controller: _tabController,
                     children: [

@@ -12,6 +12,9 @@ enum CommunityCategory {
   final String description;
 
   const CommunityCategory(this.displayName, this.description);
+
+  /// 백엔드 API에 전송할 값
+  String get serverValue => name;
 }
 
 /// 커뮤니티 게시글 모델
@@ -62,6 +65,7 @@ class CommunityPost {
       'likeCount': likeCount,
       'commentCount': commentCount,
       'viewCount': viewCount,
+      'nutrition': nutrition?.toJson(),
     };
   }
 
@@ -88,6 +92,9 @@ class CommunityPost {
       likeCount: json['likeCount'] as int? ?? 0,
       commentCount: json['commentCount'] as int? ?? 0,
       viewCount: json['viewCount'] as int? ?? 0,
+      nutrition: json['nutrition'] != null
+          ? NutritionInfo.fromJson(json['nutrition'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

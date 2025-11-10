@@ -11,6 +11,9 @@ class AppConfig {
   /// 최신 발작 예측 조회 (GET)
   static const String getLatestPredictionEndpoint = '/api/seizure-prediction';
 
+  /// 커뮤니티 게시글 (POST: 작성, GET: 조회)
+  static const String communityPostsEndpoint = '/community/posts';
+
   /// 사용자 ID (추후 인증 시스템으로 대체)
   static const int defaultUserId = 1;
 

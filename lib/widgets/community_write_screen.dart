@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/community_post.dart';
+import '../services/community_service.dart';
 import '../constants/app_colors.dart';
+import '../utils/loading_utils.dart';
 import 'common/category_chip.dart';
 
 /// 커뮤니티 게시글 작성 화면
@@ -157,7 +159,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   }
 
   /// 게시하기
-  void _submitPost() {
+  Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('모든 필수 항목을 입력해주세요.')),
@@ -179,20 +181,69 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       return;
     }
 
-    // TODO: 백엔드 API 연동하여 게시글 및 이미지 저장
-    // _selectedImages: 모든 이미지 파일
-    // _thumbnailIndex: 썸네일 이미지 인덱스
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '레시피가 게시되었습니다!\n'
-          '(이미지 ${_selectedImages.length}장, 썸네일: ${_thumbnailIndex + 1}번째)',
-        ),
-      ),
-    );
+    try {
+      // 재료 목록을 Map으로 변환
+      final ingredientsMap = <String, String>{};
+      for (var ingredient in _ingredients) {
+        final name = ingredient.nameController.text.trim();
+        final amount = ingredient.amountController.text.trim();
+        if (name.isNotEmpty && amount.isNotEmpty) {
+          ingredientsMap[name] = amount;
+        }
+      }
 
-    // 화면 닫기
-    Navigator.of(context).pop(true); // true를 반환하여 목록 새로고침 트리거
+      // 조리 순서를 List로 변환
+      final steps = _cookingSteps
+          .map((controller) => controller.text.trim())
+          .where((step) => step.isNotEmpty)
+          .toList();
+
+      // 영양 정보 파싱
+      final fat = double.tryParse(_fatController.text.trim()) ?? 0.0;
+      final protein = double.tryParse(_proteinController.text.trim()) ?? 0.0;
+      final carbs = double.tryParse(_carbsController.text.trim()) ?? 0.0;
+
+      // LoadingUtils를 사용하여 자동 로딩 화면 표시
+      // 500ms 이상 걸리면 로딩 화면이 자동으로 표시됩니다
+      final createdPost = await LoadingUtils.runWithLoading(
+        context,
+        () => CommunityService.createPost(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          category: _selectedCategory!,
+          images: _selectedImages,
+          thumbnailIndex: _thumbnailIndex,
+          ingredients: ingredientsMap,
+          cookingSteps: steps,
+          fat: fat,
+          protein: protein,
+          carbs: carbs,
+        ),
+      );
+
+      // 성공 메시지
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('레시피가 게시되었습니다! (ID: ${createdPost.id})'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // 화면 닫기 (목록 새로고침 트리거)
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      // 에러 메시지
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('게시글 업로드 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

@@ -61,7 +61,7 @@ class PdfGeneratorService {
             pw.SizedBox(height: 100),
             pw.Center(
               child: pw.Text(
-                '간질 환자 의료 보고서',
+                '뇌전증 환자 의료 보고서',
                 style: pw.TextStyle(
                   fontSize: 32,
                   fontWeight: pw.FontWeight.bold,
