@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/community_post.dart';
@@ -463,12 +464,19 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Image.file(
-              File(_selectedImages[index].path),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-            ),
+            child: kIsWeb
+                ? Image.network(
+                    _selectedImages[index].path,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  )
+                : Image.file(
+                    File(_selectedImages[index].path),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
           ),
         ),
 
