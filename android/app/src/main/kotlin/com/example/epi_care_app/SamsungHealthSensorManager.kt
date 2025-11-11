@@ -29,6 +29,7 @@ class SamsungHealthSensorManager(
     private var healthTrackingService: HealthTrackingService? = null
     private val activeTrackers = mutableMapOf<String, HealthTracker>()
     private var isTracking = false
+    private var isServiceConnected = false // 실제 연결 상태 추적
 
     private var eventSink: EventChannel.EventSink? = null
 
@@ -49,7 +50,8 @@ class SamsungHealthSensorManager(
                     stopTracking(result)
                 }
                 "isConnected" -> {
-                    result.success(healthTrackingService != null)
+                    // 실제 연결 상태를 반환 (서비스 객체 존재 + 연결 완료)
+                    result.success(isServiceConnected && healthTrackingService != null)
                 }
                 else -> {
                     result.notImplemented()
@@ -82,6 +84,7 @@ class SamsungHealthSensorManager(
         try {
             val connectionListener = object : HealthTrackingService.ConnectionListener {
                 override fun onConnectionSuccess() {
+                    isServiceConnected = true // 연결 상태 업데이트
                     Log.d(TAG, "Health Tracking Service connected successfully")
                     result.success(mapOf(
                         "success" to true,
@@ -90,11 +93,13 @@ class SamsungHealthSensorManager(
                 }
 
                 override fun onConnectionEnded() {
+                    isServiceConnected = false // 연결 종료 상태 업데이트
                     Log.d(TAG, "Health Tracking Service connection ended")
                     healthTrackingService = null
                 }
 
                 override fun onConnectionFailed(error: HealthTrackerException?) {
+                    isServiceConnected = false // 연결 실패 상태 업데이트
                     val errorMsg = "Samsung Health Sensor 연결 실패: ${error?.message}"
                     Log.e(TAG, errorMsg, error)
                     result.error("CONNECTION_FAILED", errorMsg, error?.message)
@@ -453,6 +458,7 @@ class SamsungHealthSensorManager(
 
             healthTrackingService?.disconnectService()
             healthTrackingService = null
+            isServiceConnected = false // 연결 상태 리셋
             eventSink = null
 
             Log.d(TAG, "Resources disposed")

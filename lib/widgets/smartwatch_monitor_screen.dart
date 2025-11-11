@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/galaxy_watch_service.dart';
 import '../services/seizure_prediction_service.dart';
 import '../models/health_sensor_data.dart';
@@ -51,10 +52,49 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
 
   /// 초기화 및 Galaxy Watch 연결
   Future<void> _initialize() async {
-    _addLog('Galaxy Watch 연결 확인 중...');
-
     try {
-      // Galaxy Watch 연결 여부 확인 (5초 timeout)
+      // 1단계: 권한 확인
+      _addLog('권한 확인 중...');
+      final permissionStatuses = await _galaxyWatchService.checkPermissions();
+
+      final allGranted = permissionStatuses.values.every(
+        (status) => status == PermissionStatus.granted || status == PermissionStatus.limited,
+      );
+
+      if (!allGranted) {
+        _addLog('⚠️ 필수 권한이 없습니다. 권한을 요청합니다...');
+
+        // 권한 요청
+        final granted = await _galaxyWatchService.requestPermissions();
+
+        if (!granted) {
+          _addLog('❌ 필수 권한이 거부되었습니다');
+          _addLog('   설정 > 앱 > EpiCare > 권한에서');
+          _addLog('   블루투스, 위치, 센서 권한을 허용해주세요');
+
+          // 영구적으로 거부된 권한 확인
+          final permanentlyDenied = await _galaxyWatchService.checkPermanentlyDenied();
+          final hasPermanentlyDenied = permanentlyDenied.values.any((denied) => denied);
+
+          if (hasPermanentlyDenied) {
+            _addLog('💡 권한이 영구적으로 거부되었습니다');
+            _addLog('   설정에서 수동으로 권한을 허용해야 합니다');
+          }
+
+          setState(() {
+            _isConnected = false;
+            _isLoading = false;
+          });
+          return;
+        }
+
+        _addLog('✅ 권한 승인 완료');
+      } else {
+        _addLog('✅ 모든 권한이 승인되어 있습니다');
+      }
+
+      // 2단계: Galaxy Watch 연결 확인
+      _addLog('Galaxy Watch 연결 확인 중...');
       final connected = await _galaxyWatchService.isConnected()
         .timeout(
           const Duration(seconds: 5),
@@ -76,7 +116,7 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
 
       _addLog('✅ Galaxy Watch 연결됨');
 
-      // Galaxy Watch SDK 초기화
+      // 3단계: Galaxy Watch SDK 초기화
       _addLog('센서 초기화 중...');
       final result = await _galaxyWatchService.initialize(
         trackers: [
@@ -99,7 +139,7 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
       _addLog('✅ 센서 초기화 완료');
       _addLog('   지원 센서: ${result['trackers']?.toString() ?? "알 수 없음"}');
 
-      // 스트리밍 시작
+      // 4단계: 스트리밍 시작
       await _startTracking();
 
       setState(() {

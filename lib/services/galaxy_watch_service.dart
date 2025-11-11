@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/health_sensor_data.dart';
 
@@ -121,6 +122,85 @@ class GalaxyWatchService {
       debugPrint('Failed to check connection: ${error.message}');
       return false;
     }
+  }
+
+  /// 필요한 모든 권한 확인
+  /// Android 12+ 에서는 BLUETOOTH_CONNECT, BLUETOOTH_SCAN 필수
+  Future<Map<Permission, PermissionStatus>> checkPermissions() async {
+    final permissions = [
+      Permission.bluetoothConnect, // Android 12+ 필수
+      Permission.bluetoothScan, // Android 12+ 필수
+      Permission.location, // 블루투스 스캔을 위해 필요
+      Permission.sensors, // 센서 데이터 읽기
+      Permission.notification, // Android 13+ 알림
+    ];
+
+    final statuses = <Permission, PermissionStatus>{};
+    for (final permission in permissions) {
+      statuses[permission] = await permission.status;
+    }
+
+    debugPrint('Permission statuses: $statuses');
+    return statuses;
+  }
+
+  /// 모든 필수 권한 요청
+  Future<bool> requestPermissions() async {
+    debugPrint('Requesting permissions...');
+
+    final permissions = [
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.location,
+      Permission.sensors,
+      Permission.notification,
+    ];
+
+    final statuses = await permissions.request();
+    debugPrint('Permission request results: $statuses');
+
+    // 필수 권한들이 모두 승인되었는지 확인
+    final bluetoothConnect = statuses[Permission.bluetoothConnect]?.isGranted ?? false;
+    final bluetoothScan = statuses[Permission.bluetoothScan]?.isGranted ?? false;
+    final location = statuses[Permission.location]?.isGranted ?? false;
+    final sensors = statuses[Permission.sensors]?.isGranted ?? false;
+
+    // Android 13+ 에서는 알림 권한도 필요하지만, 선택사항으로 처리
+    final notification = statuses[Permission.notification]?.isGranted ?? true;
+
+    final allGranted = bluetoothConnect && bluetoothScan && location && sensors;
+
+    if (!allGranted) {
+      debugPrint('Required permissions denied:');
+      if (!bluetoothConnect) debugPrint('  - Bluetooth Connect');
+      if (!bluetoothScan) debugPrint('  - Bluetooth Scan');
+      if (!location) debugPrint('  - Location');
+      if (!sensors) debugPrint('  - Sensors');
+    }
+
+    if (!notification) {
+      debugPrint('Optional notification permission denied');
+    }
+
+    return allGranted;
+  }
+
+  /// 권한이 영구적으로 거부되었는지 확인
+  Future<Map<Permission, bool>> checkPermanentlyDenied() async {
+    final permissions = [
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.location,
+      Permission.sensors,
+      Permission.notification,
+    ];
+
+    final permanentlyDenied = <Permission, bool>{};
+    for (final permission in permissions) {
+      permanentlyDenied[permission] = await permission.isPermanentlyDenied;
+    }
+
+    return permanentlyDenied;
   }
 
   /// Request a single-shot measurement for the given tracker type.
