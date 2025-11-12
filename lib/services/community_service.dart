@@ -1,14 +1,31 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+
 import '../config.dart';
 import '../models/community_post.dart';
+import '../models/nutrition_info.dart';
 
 /// 커뮤니티 관련 API 서비스
 class CommunityService {
   static final String _baseUrl = AppConfig.baseUrl;
   static final String _communityEndpoint = AppConfig.communityPostsEndpoint;
+
+  /// 로컬 모드 사용 여부. true이면 네트워크 대신 인메모리 저장소 사용.
+  static bool useLocalMode = true;
+
+  static final List<CommunityPost> _localPosts = [];
+  static int _localIdCounter = 0;
+
+  static List<CommunityPost> get localPosts => List.unmodifiable(_localPosts);
+
+  static void seedLocalPosts(List<CommunityPost> posts) {
+    if (!useLocalMode || _localPosts.isNotEmpty) return;
+    _localPosts.addAll(posts);
+  }
 
   /// 커뮤니티 게시글 목록 조회
   ///
@@ -22,6 +39,14 @@ class CommunityService {
     int page = 1,
     int limit = 20,
   }) async {
+    if (useLocalMode) {
+      final filtered = _filterAndSortLocalPosts(category: category, sort: sort);
+      final start = math.max(0, (page - 1) * limit);
+      if (start >= filtered.length) return [];
+      final end = math.min(filtered.length, start + limit);
+      return filtered.sublist(start, end);
+    }
+
     try {
       // 쿼리 파라미터 구성
       final queryParams = <String, String>{
@@ -34,24 +59,27 @@ class CommunityService {
         queryParams['category'] = category.serverValue;
       }
 
-      final uri = Uri.parse('$_baseUrl$_communityEndpoint')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl$_communityEndpoint',
+      ).replace(queryParameters: queryParams);
 
       print('[CommunityService] Fetching posts: $uri');
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          // TODO: 인증 토큰 추가
-          // 'Authorization': 'Bearer $token',
-        },
-      ).timeout(
-        const Duration(seconds: 10), // 타임아웃 10초로 단축
-        onTimeout: () {
-          throw TimeoutException('백엔드 서버 응답 시간 초과 (10초)');
-        },
-      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              // TODO: 인증 토큰 추가
+              // 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 10), // 타임아웃 10초로 단축
+            onTimeout: () {
+              throw TimeoutException('백엔드 서버 응답 시간 초과 (10초)');
+            },
+          );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -106,6 +134,39 @@ class CommunityService {
     required double protein,
     required double carbs,
   }) async {
+    if (useLocalMode) {
+      final now = DateTime.now();
+      final id = 'local_${++_localIdCounter}';
+      final calories = (fat * 9 + protein * 4 + carbs * 4).toDouble();
+      final nutrition = NutritionInfo(
+        calories: calories,
+        carbs: carbs,
+        protein: protein,
+        fat: fat,
+      );
+
+      final post = CommunityPost(
+        id: id,
+        userId: 'user001',
+        userName: 'Local User',
+        title: title,
+        content: description,
+        category: category,
+        imageUrls: images.map((file) => file.path).toList(),
+        ingredients: Map<String, String>.from(ingredients),
+        cookingSteps: List<String>.from(cookingSteps),
+        createdAt: now,
+        updatedAt: now,
+        likeCount: 0,
+        commentCount: 0,
+        viewCount: 0,
+        nutrition: nutrition,
+      );
+
+      _localPosts.insert(0, post);
+      return post;
+    }
+
     try {
       final uri = Uri.parse('$_baseUrl$_communityEndpoint');
       print('[CommunityService] Creating post: $uri');
@@ -187,12 +248,12 @@ class CommunityService {
 
   /// 게시글 좋아요
   static Future<void> likePost(String postId) async {
+    if (useLocalMode) return;
     try {
       final uri = Uri.parse('$_baseUrl$_communityEndpoint/$postId/like');
-      await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(Duration(seconds: AppConfig.requestTimeout));
+      await http
+          .post(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(Duration(seconds: AppConfig.requestTimeout));
     } catch (e) {
       print('[CommunityService] Error liking post: $e');
       rethrow;
@@ -201,15 +262,47 @@ class CommunityService {
 
   /// 게시글 저장
   static Future<void> savePost(String postId) async {
+    if (useLocalMode) return;
     try {
       final uri = Uri.parse('$_baseUrl$_communityEndpoint/$postId/save');
-      await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(Duration(seconds: AppConfig.requestTimeout));
+      await http
+          .post(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(Duration(seconds: AppConfig.requestTimeout));
     } catch (e) {
       print('[CommunityService] Error saving post: $e');
       rethrow;
     }
+  }
+
+  static List<CommunityPost> _filterAndSortLocalPosts({
+    CommunityCategory? category,
+    String sort = 'latest',
+  }) {
+    final filtered = _localPosts.where((post) {
+      if (category == null) return true;
+      return post.category == category;
+    }).toList();
+
+    switch (sort) {
+      case 'popular':
+        filtered.sort((a, b) {
+          final scoreA = a.likeCount + (a.commentCount * 2);
+          final scoreB = b.likeCount + (b.commentCount * 2);
+          return scoreB.compareTo(scoreA);
+        });
+        break;
+      case 'saved':
+        filtered.sort((a, b) => b.likeCount.compareTo(a.likeCount));
+        break;
+      case 'comments':
+        filtered.sort((a, b) => b.commentCount.compareTo(a.commentCount));
+        break;
+      case 'latest':
+      default:
+        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+    }
+
+    return filtered;
   }
 }

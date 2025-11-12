@@ -32,13 +32,14 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
 
   // 재료 목록
   final List<_Ingredient> _ingredients = [
-    _Ingredient(nameController: TextEditingController(), amountController: TextEditingController()),
+    _Ingredient(
+      nameController: TextEditingController(),
+      amountController: TextEditingController(),
+    ),
   ];
 
   // 조리 순서
-  final List<TextEditingController> _cookingSteps = [
-    TextEditingController(),
-  ];
+  final List<TextEditingController> _cookingSteps = [TextEditingController()];
 
   // 영양 정보
   final _fatController = TextEditingController();
@@ -77,9 +78,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   /// 재료 삭제
   void _removeIngredient(int index) {
     if (_ingredients.length <= 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('최소 1개의 재료가 필요합니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('최소 1개의 재료가 필요합니다.')));
       return;
     }
     setState(() {
@@ -99,9 +100,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   /// 조리 순서 삭제
   void _removeCookingStep(int index) {
     if (_cookingSteps.length <= 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('최소 1개의 조리 순서가 필요합니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('최소 1개의 조리 순서가 필요합니다.')));
       return;
     }
     setState(() {
@@ -113,9 +114,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   /// 이미지 선택
   Future<void> _pickImages() async {
     if (_selectedImages.length >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('최대 3장까지 첨부할 수 있습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('최대 3장까지 첨부할 수 있습니다.')));
       return;
     }
 
@@ -141,7 +142,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
 
       // 썸네일 인덱스 조정
       if (_thumbnailIndex >= _selectedImages.length) {
-        _thumbnailIndex = _selectedImages.isEmpty ? 0 : _selectedImages.length - 1;
+        _thumbnailIndex = _selectedImages.isEmpty
+            ? 0
+            : _selectedImages.length - 1;
       } else if (_thumbnailIndex > index) {
         _thumbnailIndex--;
       }
@@ -153,31 +156,31 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     setState(() {
       _thumbnailIndex = index;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${index + 1}번째 사진을 썸네일로 지정했습니다.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${index + 1}번째 사진을 썸네일로 지정했습니다.')));
   }
 
   /// 게시하기
   Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('모든 필수 항목을 입력해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('모든 필수 항목을 입력해주세요.')));
       return;
     }
 
     if (_selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('카테고리를 선택해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('카테고리를 선택해주세요.')));
       return;
     }
 
     if (_selectedImages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('최소 1장의 사진을 첨부해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('최소 1장의 사진을 첨부해주세요.')));
       return;
     }
 
@@ -231,7 +234,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         );
 
         // 화면 닫기 (목록 새로고침 트리거)
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pop(createdPost);
       }
     } catch (e) {
       // 에러 메시지
@@ -256,10 +259,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         elevation: 0,
         title: const Text(
           '레시피 작성',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
       body: Form(
@@ -317,10 +317,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       children: [
         const Text(
           '카테고리',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -350,10 +347,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       children: [
         const Text(
           '기본 정보',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
 
@@ -363,9 +357,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           decoration: InputDecoration(
             labelText: '레시피 제목',
             hintText: '예: 키토 야채 스크램블',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
             fillColor: Colors.grey[50],
           ),
@@ -385,9 +377,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           decoration: InputDecoration(
             labelText: '요약 설명',
             hintText: '레시피에 대한 간단한 설명을 작성해주세요',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
             fillColor: Colors.grey[50],
           ),
@@ -413,10 +403,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           children: [
             const Text(
               '이미지',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
               '${_selectedImages.length}/3',
@@ -431,10 +418,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         const SizedBox(height: 8),
         Text(
           '최소 1장, 최대 3장까지 첨부 가능 (썸네일 지정 필수)',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
         const SizedBox(height: 12),
 
@@ -449,7 +433,8 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
               mainAxisSpacing: 8,
               childAspectRatio: 1,
             ),
-            itemCount: _selectedImages.length + (_selectedImages.length < 3 ? 1 : 0),
+            itemCount:
+                _selectedImages.length + (_selectedImages.length < 3 ? 1 : 0),
             itemBuilder: (context, index) {
               // 마지막 항목: 추가 버튼
               if (index == _selectedImages.length) {
@@ -476,20 +461,25 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         decoration: BoxDecoration(
           color: Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!, width: 2, style: BorderStyle.solid),
+          border: Border.all(
+            color: Colors.grey[300]!,
+            width: 2,
+            style: BorderStyle.solid,
+          ),
         ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_photo_alternate, size: 32, color: Colors.grey[400]),
+              Icon(
+                Icons.add_photo_alternate,
+                size: 32,
+                color: Colors.grey[400],
+              ),
               const SizedBox(height: 4),
               Text(
                 '사진 추가',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -565,11 +555,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                 color: Colors.black.withValues(alpha: 0.6),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
             ),
           ),
         ),
@@ -614,18 +600,13 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           children: [
             const Text(
               '재료',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             TextButton.icon(
               onPressed: _addIngredient,
               icon: const Icon(Icons.add, size: 18),
               label: const Text('재료 추가'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             ),
           ],
         ),
@@ -650,7 +631,10 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -676,7 +660,10 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -714,18 +701,13 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           children: [
             const Text(
               '조리 순서',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             TextButton.icon(
               onPressed: _addCookingStep,
               icon: const Icon(Icons.add, size: 18),
               label: const Text('단계 추가'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             ),
           ],
         ),
@@ -808,10 +790,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       children: [
         const Text(
           '영양 정보',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
 
@@ -886,12 +865,13 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           decoration: InputDecoration(
             hintText: hint,
             suffix: const Text('g'),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
             fillColor: Colors.grey[50],
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
           keyboardType: TextInputType.number,
           validator: (value) {
@@ -925,10 +905,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         ),
         child: const Text(
           '게시하기',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -940,8 +917,5 @@ class _Ingredient {
   final TextEditingController nameController;
   final TextEditingController amountController;
 
-  _Ingredient({
-    required this.nameController,
-    required this.amountController,
-  });
+  _Ingredient({required this.nameController, required this.amountController});
 }

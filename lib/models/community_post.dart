@@ -27,6 +27,8 @@ class CommunityPost {
   final String content;
   final CommunityCategory category;
   final List<String> imageUrls;
+  final Map<String, String> ingredients;
+  final List<String> cookingSteps;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final int likeCount;
@@ -42,6 +44,8 @@ class CommunityPost {
     required this.content,
     required this.category,
     this.imageUrls = const [],
+    this.ingredients = const <String, String>{},
+    this.cookingSteps = const <String>[],
     required this.createdAt,
     this.updatedAt,
     this.likeCount = 0,
@@ -60,6 +64,8 @@ class CommunityPost {
       'content': content,
       'category': category.name,
       'imageUrls': imageUrls,
+      'ingredients': ingredients,
+      'cookingSteps': cookingSteps,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'likeCount': likeCount,
@@ -71,6 +77,24 @@ class CommunityPost {
 
   /// JSON에서 객체 생성
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
+    final rawIngredients = json['ingredients'];
+    Map<String, String> parsedIngredients = const <String, String>{};
+    if (rawIngredients is Map) {
+      parsedIngredients = Map.unmodifiable(
+        rawIngredients.map(
+          (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+        ),
+      );
+    }
+
+    final rawSteps = json['cookingSteps'];
+    List<String> parsedSteps = const <String>[];
+    if (rawSteps is List) {
+      parsedSteps = List<String>.unmodifiable(
+        rawSteps.map((step) => step.toString()),
+      );
+    }
+
     return CommunityPost(
       id: json['id'] as String,
       userId: json['userId'] as String,
@@ -81,10 +105,13 @@ class CommunityPost {
         (e) => e.name == json['category'],
         orElse: () => CommunityCategory.other,
       ),
-      imageUrls: (json['imageUrls'] as List<dynamic>?)
+      imageUrls:
+          (json['imageUrls'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           [],
+      ingredients: parsedIngredients,
+      cookingSteps: parsedSteps,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)

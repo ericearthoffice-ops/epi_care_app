@@ -81,6 +81,11 @@ class _CommunityListScreenState extends State<CommunityListScreen>
         selectedCategory = CommunityCategory.values[_tabController.index - 1];
       }
 
+      if (CommunityService.useLocalMode &&
+          CommunityService.localPosts.isEmpty) {
+        CommunityService.seedLocalPosts(_generateMockPosts());
+      }
+
       // 백엔드 API 호출
       final posts = await CommunityService.fetchPosts(
         category: selectedCategory,
@@ -293,9 +298,13 @@ class _CommunityListScreenState extends State<CommunityListScreen>
 
   /// 내 글만 필터링
   List<CommunityPost> get _myPosts {
-    var posts = _communityPosts.where((post) => post.userId == _currentUserId).toList();
+    var posts = _communityPosts
+        .where((post) => post.userId == _currentUserId)
+        .toList();
     if (_selectedCategory != null) {
-      posts = posts.where((post) => post.category == _selectedCategory).toList();
+      posts = posts
+          .where((post) => post.category == _selectedCategory)
+          .toList();
     }
     return _sortPosts(posts);
   }
@@ -307,10 +316,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
       appBar: AppBar(
         title: const Text(
           '커뮤니티',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: AppColors.primary,
@@ -362,8 +368,13 @@ class _CommunityListScreenState extends State<CommunityListScreen>
             ),
           );
 
-          // 게시글이 작성되었으면 목록 새로고침
-          if (result == true && mounted) {
+          if (!mounted) return;
+
+          if (result is CommunityPost) {
+            setState(() {
+              _communityPosts.insert(0, result);
+            });
+          } else if (result == true) {
             _loadCommunityPosts();
           }
         },
@@ -435,11 +446,11 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                 ...CommunityCategory.values.map((category) {
                   final count = _tabController.index == 0
                       ? _communityPosts
-                          .where((post) => post.category == category)
-                          .length
+                            .where((post) => post.category == category)
+                            .length
                       : _myPosts
-                          .where((post) => post.category == category)
-                          .length;
+                            .where((post) => post.category == category)
+                            .length;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: CategoryChip(
@@ -513,14 +524,19 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                 children: [
                   // 카테고리 뱃지
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: FormatUtils.getCommunityCategoryColor(post.category)
-                          .withValues(alpha: 0.1),
+                      color: FormatUtils.getCommunityCategoryColor(
+                        post.category,
+                      ).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: FormatUtils.getCommunityCategoryColor(post.category)
-                            .withValues(alpha: 0.3),
+                        color: FormatUtils.getCommunityCategoryColor(
+                          post.category,
+                        ).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
@@ -528,7 +544,9 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: FormatUtils.getCommunityCategoryColor(post.category),
+                        color: FormatUtils.getCommunityCategoryColor(
+                          post.category,
+                        ),
                       ),
                     ),
                   ),
@@ -576,10 +594,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                       const SizedBox(width: 4),
                       Text(
                         post.userName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       const SizedBox(width: 16),
 
@@ -592,10 +607,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                       const SizedBox(width: 4),
                       Text(
                         '${post.likeCount}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       const SizedBox(width: 12),
 
@@ -608,10 +620,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                       const SizedBox(width: 4),
                       Text(
                         '${post.commentCount}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       const SizedBox(width: 12),
 
@@ -624,10 +633,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                       const SizedBox(width: 4),
                       Text(
                         '${post.viewCount}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
 
                       const Spacer(),
@@ -635,10 +641,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
                       // 작성 시간
                       Text(
                         FormatUtils.getTimeAgoText(post.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -661,13 +664,12 @@ class _CommunityListScreenState extends State<CommunityListScreen>
           end: Alignment.bottomRight,
           colors: [
             FormatUtils.getCommunityCategoryColor(post.category),
-            FormatUtils.getCommunityCategoryColor(post.category)
-                .withValues(alpha: 0.7),
+            FormatUtils.getCommunityCategoryColor(
+              post.category,
+            ).withValues(alpha: 0.7),
           ],
         ),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(12),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Center(
         child: Icon(
@@ -685,11 +687,7 @@ class _CommunityListScreenState extends State<CommunityListScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.restaurant_menu,
-            size: 80,
-            color: Colors.grey[300],
-          ),
+          Icon(Icons.restaurant_menu, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
             _tabController.index == 0 ? '아직 게시글이 없습니다' : '작성한 글이 없습니다',
@@ -701,13 +699,8 @@ class _CommunityListScreenState extends State<CommunityListScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            _tabController.index == 0
-                ? '첫 번째 레시피를 공유해보세요!'
-                : '케토 레시피를 공유해보세요!',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            _tabController.index == 0 ? '첫 번째 레시피를 공유해보세요!' : '케토 레시피를 공유해보세요!',
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
