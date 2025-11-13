@@ -1,11 +1,11 @@
-/// Q&A 카테고리
+﻿/// Q&A 카테고리
 enum QnaCategory {
-  medication('복약 관리', '약 복용, 약물 상호작용, 복약 스케줄 관련'),
-  seizure('발작 관리', '발작 대처법, 증상, 예방법 관련'),
+  medication('복약 관리', '약 복용, 약물 부작용, 복약 일정 관련'),
+  seizure('발작 관리', '발작 대처법, 증상, 예방 관련'),
   diet('식단 관리', '케토제닉 식단, 영양 관리 관련'),
-  lifestyle('일상생활', '학교생활, 운동, 여가활동 관련'),
-  medical('의료 정보', '진단, 검사, 치료법 관련'),
-  other('기타', '그 외 일반적인 질문');
+  lifestyle('일상생활', '학교생활, 운동, 여가 활동 관련'),
+  medical('의료 정보', '진단, 검사, 치료 관련'),
+  other('기타', '기타 일반 질문');
 
   final String displayName;
   final String description;
@@ -18,7 +18,7 @@ enum ExpertType {
   pediatrician('소아청소년과 전문의'),
   pharmacist('약사'),
   dietitian('영양사'),
-  psychologist('심리상담사'),
+  psychologist('심리상담가'),
   any('분야 무관');
 
   final String displayName;
@@ -36,8 +36,8 @@ class QnaPost {
   final ExpertType expertType; // 희망 전문가 분야
   final List<String> imageUrls; // 첨부 이미지 URL 목록
   final bool isPrivate; // 비공개 여부 (true: 본인과 전문가만 조회 가능)
-  final DateTime createdAt; // 작성일시
-  final DateTime? updatedAt; // 수정일시
+  final DateTime createdAt; // 작성 일시
+  final DateTime? updatedAt; // 수정 일시
   final int viewCount; // 조회수
   final int answerCount; // 답변 수
   final bool hasAcceptedAnswer; // 채택된 답변 존재 여부
@@ -61,7 +61,7 @@ class QnaPost {
     this.answers = const [],
   });
 
-  /// JSON으로 변환 (백엔드 전송용)
+  /// JSON으로 변환 (백엔드 전송)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -82,7 +82,7 @@ class QnaPost {
     };
   }
 
-  /// JSON에서 생성 (백엔드 수신용)
+  /// JSON에서 생성 (백엔드 수신)
   factory QnaPost.fromJson(Map<String, dynamic> json) {
     return QnaPost(
       id: json['id'] as String,
@@ -126,9 +126,9 @@ class QnaAnswer {
   final String expertName; // 전문가 이름
   final ExpertType expertType; // 전문가 분야
   final String content; // 답변 내용
-  final DateTime createdAt; // 작성일시
-  final DateTime? updatedAt; // 수정일시
-  final bool isAccepted; // 질문자가 채택한 답변 여부
+  final DateTime createdAt; // 작성 일시
+  final DateTime? updatedAt; // 수정 일시
+  final bool isAccepted; // 질문자가 채택했는지 여부
   final int likeCount; // 좋아요 수
 
   QnaAnswer({

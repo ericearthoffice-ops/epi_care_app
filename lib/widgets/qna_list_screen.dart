@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/qna_post.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_styles.dart';
+import '../services/qna_service.dart';
 import '../utils/format_utils.dart';
 import '../widgets/common/category_chip.dart';
 import 'qna_write_screen.dart';
@@ -26,136 +27,42 @@ class _QnaListScreenState extends State<QnaListScreen> {
     _loadQnaPosts();
   }
 
-  /// Q&A 목록 로드 (Mock 데이터)
+  /// Q&A 목록 로드
   Future<void> _loadQnaPosts() async {
     setState(() {
       _isLoading = true;
     });
 
-    // TODO: 백엔드 API 연동
-    // 현재는 Mock 데이터
-    await Future.delayed(const Duration(seconds: 1));
-
-    final mockPosts = _generateMockPosts();
-
-    setState(() {
-      _qnaPosts = mockPosts;
-      _isLoading = false;
-    });
+    try {
+      final posts = await QnaService.fetchPosts();
+      if (!mounted) return;
+      setState(() {
+        _qnaPosts = posts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _qnaPosts = [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Q&A 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.\n($e)'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
-  /// Mock 데이터 생성
-  List<QnaPost> _generateMockPosts() {
-    final now = DateTime.now();
-    return [
-      QnaPost(
-        id: '1',
-        userId: 'user001',
-        userName: '김민지',
-        title: '레베티라세탐을 늦게 먹으면 어떻게 해야 하나요?',
-        content:
-            '오늘 아침 8시에 먹어야 하는데 깜빡하고 오후 2시에 생각났습니다. 바로 먹어야 할까요?',
-        category: QnaCategory.medication,
-        expertType: ExpertType.pharmacist,
-        isPrivate: false,
-        createdAt: now.subtract(const Duration(hours: 3)),
-        viewCount: 24,
-        answerCount: 2,
-        hasAcceptedAnswer: true,
-      ),
-      QnaPost(
-        id: '2',
-        userId: 'user002',
-        userName: '이서준',
-        title: '발작이 일어났을 때 응급처치 방법이 궁금합니다',
-        content: '학교에서 발작이 일어나면 어떻게 대처해야 하나요? 선생님께 알려드려야 할 내용이 있을까요?',
-        category: QnaCategory.seizure,
-        expertType: ExpertType.pediatricNeurologist,
-        isPrivate: false,
-        createdAt: now.subtract(const Duration(hours: 5)),
-        viewCount: 45,
-        answerCount: 3,
-        hasAcceptedAnswer: true,
-      ),
-      QnaPost(
-        id: '3',
-        userId: 'user003',
-        userName: '박지우',
-        title: '케토제닉 식단에서 먹을 수 있는 간식이 있나요?',
-        content: '아이가 간식을 먹고 싶어 하는데, 케토제닉 식단을 유지하면서 먹을 수 있는 것이 있을까요?',
-        category: QnaCategory.diet,
-        expertType: ExpertType.dietitian,
-        isPrivate: false,
-        createdAt: now.subtract(const Duration(hours: 8)),
-        viewCount: 18,
-        answerCount: 1,
-        hasAcceptedAnswer: false,
-      ),
-      QnaPost(
-        id: '4',
-        userId: 'user004',
-        userName: '최서연',
-        title: '약 부작용 관련 질문입니다',
-        content: '최근 약을 바꿨는데 졸림이 심합니다. 이런 증상이 정상인가요?',
-        category: QnaCategory.medication,
-        expertType: ExpertType.pediatricNeurologist,
-        isPrivate: true, // 비공개 질문
-        createdAt: now.subtract(const Duration(days: 1)),
-        viewCount: 5,
-        answerCount: 1,
-        hasAcceptedAnswer: false,
-      ),
-      QnaPost(
-        id: '5',
-        userId: 'user005',
-        userName: '정다은',
-        title: '체육 수업 참여해도 괜찮을까요?',
-        content: '학교 체육 수업에 참여해도 되는지 궁금합니다. 주의해야 할 운동이 있나요?',
-        category: QnaCategory.lifestyle,
-        expertType: ExpertType.pediatrician,
-        isPrivate: false,
-        createdAt: now.subtract(const Duration(days: 2)),
-        viewCount: 32,
-        answerCount: 2,
-        hasAcceptedAnswer: true,
-      ),
-      QnaPost(
-        id: '6',
-        userId: 'user006',
-        userName: '강민호',
-        title: 'EEG 검사 결과 해석 부탁드립니다',
-        content: '최근 EEG 검사를 받았는데 결과지 내용이 이해가 잘 안됩니다.',
-        category: QnaCategory.medical,
-        expertType: ExpertType.pediatricNeurologist,
-        isPrivate: true, // 비공개 질문
-        createdAt: now.subtract(const Duration(days: 3)),
-        viewCount: 8,
-        answerCount: 1,
-        hasAcceptedAnswer: true,
-      ),
-      QnaPost(
-        id: '7',
-        userId: 'user007',
-        userName: '윤수빈',
-        title: '약을 까먹고 안 먹으면 어떻게 되나요?',
-        content: '가끔 약 먹는 것을 까먹는데, 한두 번 정도는 괜찮을까요?',
-        category: QnaCategory.medication,
-        expertType: ExpertType.pharmacist,
-        isPrivate: false,
-        createdAt: now.subtract(const Duration(days: 5)),
-        viewCount: 67,
-        answerCount: 4,
-        hasAcceptedAnswer: true,
-      ),
-    ];
-  }
-
-  /// 카테고리별 필터링된 목록
   List<QnaPost> get _filteredPosts {
     if (_selectedCategory == null) {
       return _qnaPosts;
     }
-    return _qnaPosts.where((post) => post.category == _selectedCategory).toList();
+    return _qnaPosts
+        .where((post) => post.category == _selectedCategory)
+        .toList();
   }
 
   @override
@@ -165,10 +72,7 @@ class _QnaListScreenState extends State<QnaListScreen> {
       appBar: AppBar(
         title: const Text(
           'Q&A',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: AppColors.primary,
@@ -186,15 +90,13 @@ class _QnaListScreenState extends State<QnaListScreen> {
               ),
             ),
             tooltip: '질문 등록하기',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const QnaWriteScreen(),
-                ),
-              ).then((_) {
-                // 질문 작성 후 돌아왔을 때 목록 새로고침
+            onPressed: () async {
+              final shouldRefresh = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(builder: (context) => const QnaWriteScreen()),
+              );
+              if (shouldRefresh == true) {
                 _loadQnaPosts();
-              });
+              }
             },
           ),
         ],
@@ -208,23 +110,21 @@ class _QnaListScreenState extends State<QnaListScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primary,
-                    ),
+                    child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _filteredPosts.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadQnaPosts,
-                        color: AppColors.primary,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: _filteredPosts.length,
-                          itemBuilder: (context, index) {
-                            return _buildQnaCard(_filteredPosts[index]);
-                          },
-                        ),
-                      ),
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _loadQnaPosts,
+                    color: AppColors.primary,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: _filteredPosts.length,
+                      itemBuilder: (context, index) {
+                        return _buildQnaCard(_filteredPosts[index]);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -253,8 +153,9 @@ class _QnaListScreenState extends State<QnaListScreen> {
             ),
             const SizedBox(width: 8),
             ...QnaCategory.values.map((category) {
-              final count =
-                  _qnaPosts.where((post) => post.category == category).length;
+              final count = _qnaPosts
+                  .where((post) => post.category == category)
+                  .length;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: CategoryChip(
@@ -301,12 +202,19 @@ class _QnaListScreenState extends State<QnaListScreen> {
                 children: [
                   // 카테고리 뱃지
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: FormatUtils.getQnaCategoryColor(post.category).withValues(alpha:0.1),
+                      color: FormatUtils.getQnaCategoryColor(
+                        post.category,
+                      ).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: FormatUtils.getQnaCategoryColor(post.category).withValues(alpha:0.3),
+                        color: FormatUtils.getQnaCategoryColor(
+                          post.category,
+                        ).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
@@ -321,18 +229,17 @@ class _QnaListScreenState extends State<QnaListScreen> {
                   const SizedBox(width: 8),
                   // 비공개 아이콘
                   if (post.isPrivate)
-                    Icon(
-                      Icons.lock,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
+                    Icon(Icons.lock, size: 16, color: Colors.grey[600]),
                   const Spacer(),
                   // 채택 완료 뱃지
                   if (post.hasAcceptedAnswer)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha:0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -392,18 +299,11 @@ class _QnaListScreenState extends State<QnaListScreen> {
               Row(
                 children: [
                   // 전문가 분야
-                  Icon(
-                    Icons.person_outline,
-                    size: 14,
-                    color: Colors.grey[500],
-                  ),
+                  Icon(Icons.person_outline, size: 14, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Text(
                     post.expertType.displayName,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   ),
                   const SizedBox(width: 12),
                   // 답변 수
@@ -435,19 +335,13 @@ class _QnaListScreenState extends State<QnaListScreen> {
                   const SizedBox(width: 4),
                   Text(
                     '${post.viewCount}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   ),
                   const Spacer(),
                   // 작성 시간
                   Text(
                     FormatUtils.getTimeAgoText(post.createdAt),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -481,21 +375,20 @@ class _QnaListScreenState extends State<QnaListScreen> {
           const SizedBox(height: 8),
           Text(
             '첫 번째 질문을 등록해보세요!',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const QnaWriteScreen(),
-                ),
-              ).then((_) {
-                _loadQnaPosts();
-              });
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (context) => const QnaWriteScreen(),
+                    ),
+                  )
+                  .then((_) {
+                    _loadQnaPosts();
+                  });
             },
             icon: const Icon(Icons.edit),
             label: const Text('질문 등록하기'),

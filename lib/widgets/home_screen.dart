@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../utils/notification_service.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_styles.dart';
+import '../models/qna_post.dart';
+import '../services/qna_service.dart';
 import 'qna_list_screen.dart';
 import 'column_list_screen.dart';
 import 'community_list_screen.dart';
@@ -87,10 +89,7 @@ class HomeScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            AppColors.primary,
-            AppColors.primaryDark,
-          ],
+          colors: [AppColors.primary, AppColors.primaryDark],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(40),
@@ -129,9 +128,7 @@ class HomeScreen extends StatelessWidget {
             label: 'Q&A',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const QnaListScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const QnaListScreen()),
               );
             },
           ),
@@ -183,18 +180,13 @@ class HomeScreen extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset(imagePath, fit: BoxFit.contain),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             label,
-            style: AppStyles.bodySmall.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppStyles.bodySmall.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -220,10 +212,7 @@ class HomeScreen extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF5B7FFF),
-                Color(0xFF4A6AE8),
-              ],
+              colors: [Color(0xFF5B7FFF), Color(0xFF4A6AE8)],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -265,10 +254,7 @@ class HomeScreen extends StatelessWidget {
                     SizedBox(height: 4),
                     Text(
                       '발작·식이·약 기록을 PDF로 내보내기',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ],
                 ),
@@ -286,29 +272,69 @@ class HomeScreen extends StatelessWidget {
   }
 
   /// 인기질문 섹션
+  /// ???? ??
   Widget _buildPopularQuestions() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppStyles.paddingMedium),
-          child: Text(
-            '인기질문',
-            style: AppStyles.h3,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppStyles.paddingMedium,
           ),
+          child: Text('????', style: AppStyles.h3),
         ),
         const SizedBox(height: 16),
-        const _QuestionItem(
-          number: 1,
-          question: '약을 까먹고 안 먹으면 어떻게 되나요?',
-          answerCount: 3,
+        FutureBuilder<List<QnaPost>>(
+          future: QnaService.fetchPopular(limit: 3),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              );
+            }
+            if (snapshot.hasError) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppStyles.paddingMedium,
+                ),
+                child: Text(
+                  '?? ??? ???? ????.',
+                  style: AppStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              );
+            }
+            final posts = snapshot.data ?? [];
+            if (posts.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppStyles.paddingMedium,
+                ),
+                child: Text(
+                  '?? ??? ??? ???. ? ??? ?????!',
+                  style: AppStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: posts.asMap().entries.map((entry) {
+                final post = entry.value;
+                return _QuestionItem(
+                  number: entry.key + 1,
+                  question: post.title,
+                  answerCount: post.answerCount,
+                  hasAcceptedAnswer: post.hasAcceptedAnswer,
+                );
+              }).toList(),
+            );
+          },
         ),
-        const _QuestionItem(
-          number: 2,
-          question: '조사 보관함의 과거 이상이 있다고 하는 다른 곳들은 전부으로 먼씹니까?',
-          answerCount: 1,
-        ),
-        // 추가 질문들...
       ],
     );
   }
@@ -329,10 +355,7 @@ class _HeaderIcon extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child: Image.asset(
-          'assets/images/Neuron.png',
-          fit: BoxFit.cover,
-        ),
+        child: Image.asset('assets/images/Neuron.png', fit: BoxFit.cover),
       ),
     );
   }
@@ -343,11 +366,13 @@ class _QuestionItem extends StatelessWidget {
   final int number;
   final String question;
   final int answerCount;
+  final bool hasAcceptedAnswer;
 
   const _QuestionItem({
     required this.number,
     required this.question,
     required this.answerCount,
+    this.hasAcceptedAnswer = false,
   });
 
   @override
@@ -366,7 +391,6 @@ class _QuestionItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 번호
           Text(
             '$number',
             style: AppStyles.bodyMedium.copyWith(
@@ -375,7 +399,6 @@ class _QuestionItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          // 질문 내용
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,19 +410,24 @@ class _QuestionItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // 답변 수
                 Row(
                   children: [
-                    const Icon(
-                      Icons.chat_bubble_outline,
+                    Icon(
+                      hasAcceptedAnswer
+                          ? Icons.verified_outlined
+                          : Icons.chat_bubble_outline,
                       size: 16,
-                      color: AppColors.primary,
+                      color: hasAcceptedAnswer
+                          ? AppColors.success
+                          : AppColors.primary,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '$answerCount',
                       style: AppStyles.caption.copyWith(
-                        color: AppColors.primary,
+                        color: hasAcceptedAnswer
+                            ? AppColors.success
+                            : AppColors.primary,
                       ),
                     ),
                   ],

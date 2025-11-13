@@ -49,5 +49,7 @@ dependencies {
 
     // Required dependencies for Samsung Health Sensor SDK
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.gms:play-services-wearable:18.1.0")
+
+    // Google Wearable Data Layer API (for receiving data from seizurewatch-master)
+    implementation("com.google.android.gms:play-services-wearable:18.2.0")
 }

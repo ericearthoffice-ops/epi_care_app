@@ -157,7 +157,6 @@ class _SeizureAlertScreenState extends State<SeizureAlertScreen> {
     final showManual = manualValues.isNotEmpty;
 
     final fallbackRows = <MapEntry<String, MedicalDataItem>>[
-      MapEntry('EMG (Muscle)', widget.predictionData.emg),
       MapEntry('ECG (Heart)', widget.predictionData.ecg),
       MapEntry('Acceleration', widget.predictionData.accelerometer),
       MapEntry('Sleep Hours', widget.predictionData.sleepTime),

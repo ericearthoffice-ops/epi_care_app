@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/galaxy_watch_service.dart';
 import '../services/seizure_prediction_service.dart';
@@ -18,10 +19,15 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
   final GalaxyWatchService _galaxyWatchService = GalaxyWatchService();
   final SeizurePredictionService _predictionService = SeizurePredictionService();
   StreamSubscription<HealthSensorData>? _dataSubscription;
+  StreamSubscription? _wearableDataSubscription;
   bool _isConnected = false;
   bool _isTracking = false;
   bool _isLoading = true;
   DateTime? _lastDataReceived;
+
+  // EventChannel for wearable data (seizurewatch-master)
+  static const EventChannel _wearableEventChannel =
+      EventChannel('com.example.epi_care_app/wearable_data_stream');
 
   // 최근 받은 데이터
   Map<String, dynamic> _latestData = {
@@ -38,16 +44,65 @@ class _SmartwatchMonitorScreenState extends State<SmartwatchMonitorScreen> {
   void initState() {
     super.initState();
     _addLog('모니터링 시작');
+    _startWearableDataListener(); // seizurewatch-master 데이터 수신 시작
     _initialize();
   }
 
   @override
   void dispose() {
     _dataSubscription?.cancel();
+    _wearableDataSubscription?.cancel();
     _galaxyWatchService.stopTracking();
     _galaxyWatchService.dispose();
     _predictionService.dispose();
     super.dispose();
+  }
+
+  /// seizurewatch-master에서 전송하는 wearable 데이터 수신 시작
+  void _startWearableDataListener() {
+    _addLog('🔵 Wearable 데이터 리스너 시작');
+
+    _wearableDataSubscription = _wearableEventChannel
+        .receiveBroadcastStream()
+        .listen(
+      (dynamic event) {
+        if (event is Map) {
+          _handleWearableData(Map<String, dynamic>.from(event));
+        }
+      },
+      onError: (error) {
+        _addLog('⚠️ Wearable 데이터 수신 오류: $error');
+      },
+      onDone: () {
+        _addLog('🔴 Wearable 데이터 스트림 종료');
+      },
+    );
+  }
+
+  /// Wearable 데이터 처리 및 로그 표시
+  void _handleWearableData(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+
+    if (type == 'wearable_biometric') {
+      final accelX = data['accelX'] as double? ?? 0.0;
+      final accelY = data['accelY'] as double? ?? 0.0;
+      final accelZ = data['accelZ'] as double? ?? 0.0;
+      final bpm = data['bpm'] as int? ?? 0;
+      final timestamp = data['timestamp'] as int? ?? 0;
+
+      // 로그 추가
+      setState(() {
+        _lastDataReceived = DateTime.now();
+        _addLog('📱 [Wearable] 가속도계: (${accelX.toStringAsFixed(2)}, ${accelY.toStringAsFixed(2)}, ${accelZ.toStringAsFixed(2)})');
+        _addLog('📱 [Wearable] 심박수: $bpm bpm');
+        _addLog('📱 [Wearable] 타임스탬프: ${DateTime.fromMillisecondsSinceEpoch(timestamp)}');
+      });
+
+      // 최근 데이터 업데이트 (심박수만)
+      if (bpm > 0) {
+        _latestData['heartRate'] = bpm.toDouble();
+      }
+    }
   }
 
   /// 초기화 및 Galaxy Watch 연결
